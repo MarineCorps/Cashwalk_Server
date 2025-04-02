@@ -59,13 +59,16 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 세션 사용 X, JWT 방식
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // 로그인/회원가입은 인증 없이 접근 허용
-                        .requestMatchers(HttpMethod.GET, "/api/test/**").permitAll() // 테스트용 GET API 허용
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/test/**").permitAll()
                         .requestMatchers("/api/users/me").authenticated()
-                        //.requestMatchers("/api/users/me").hasAuthority("ROLE_USER")
                         .requestMatchers("/api/auth/google").permitAll()
-                        .anyRequest().authenticated() // 그 외는 인증 필요
+                        .requestMatchers("/api/ads/**").authenticated()
+                        .requestMatchers("/error").permitAll()
+                        // ✅ 수정 완료
+                        .anyRequest().authenticated()
                 )
+
                 .authenticationProvider(authenticationProvider()) // 인증 제공자 등록
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // 🔁 우리가 만든 JWT 필터 등록
                 .build();

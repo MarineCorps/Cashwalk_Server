@@ -1,6 +1,8 @@
 package com.example.cashwalk.controller;
 
 import com.example.cashwalk.dto.StoreItemDto;
+import com.example.cashwalk.dto.StoreItemExchangeRequest;
+import com.example.cashwalk.dto.StoreItemExchangeResponse;
 import com.example.cashwalk.service.StoreService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,5 +28,9 @@ public class StoreController {
     public ResponseEntity<List<StoreItemDto>> getAllItems() {
         List<StoreItemDto> items = storeService.getAllItems();
         return ResponseEntity.ok(items);
+    }
+    @PostMapping("/exchange")
+    public ResponseEntity<StoreItemExchangeResponse> exchangeItem(@RequestBody StoreItemExchangeRequest request){
+        return ResponseEntity.ok(storeService.exchangeItem(request));
     }
 }

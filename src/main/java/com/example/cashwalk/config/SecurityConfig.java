@@ -65,6 +65,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/google").permitAll()
                         .requestMatchers("/api/ads/**").authenticated()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/store/exchange").authenticated()
+
                         // ✅ 수정 완료
                         .anyRequest().authenticated()
                 )

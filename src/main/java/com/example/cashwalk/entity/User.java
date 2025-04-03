@@ -36,8 +36,12 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // 가입일시
 
+    @Column(nullable = false)
+    private int points; // ✅ 사용자의 현재 보유 포인트
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        this.points = 0; // 가입 시 기본 포인트는 0으로 초기화
     }
 }

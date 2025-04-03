@@ -1,35 +1,92 @@
-//스토어 아이템 조회, 포인트로 교환 처리
 package com.example.cashwalk.service;
 
 import com.example.cashwalk.dto.StoreItemDto;
+import com.example.cashwalk.dto.StoreItemExchangeRequest;
+import com.example.cashwalk.dto.StoreItemExchangeResponse;
+import com.example.cashwalk.entity.Points;
+import com.example.cashwalk.entity.PointsType;
 import com.example.cashwalk.entity.StoreItem;
+import com.example.cashwalk.entity.User;
+import com.example.cashwalk.repository.PointsRepository;
 import com.example.cashwalk.repository.StoreRepository;
+import com.example.cashwalk.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 🛒 스토어 관련 서비스 로직 처리
+ */
 @Service
 @RequiredArgsConstructor
-
 public class StoreService {
+
     private final StoreRepository storeRepository;
+    private final UserRepository userRepository;
+    private final PointsRepository pointsRepository;
 
-    //스토어 아이템전체 목록 조회
+    /**
+     * ✅ 모든 스토어 아이템 조회
+     * @return StoreItemDto 리스트
+     */
+    public List<StoreItemDto> getAllItems() {
+        List<StoreItem> items = storeRepository.findAll();
 
-    public List<StoreItemDto> getAllItems(){
-        //1.모든 아이템을 DB에서 조회
-        List<StoreItem> items=storeRepository.findAll();
-
-        //2. StoreItem엔티티를 DTO로 변호나해서 반환
+        // StoreItem Entity → DTO로 변환하여 반환
         return items.stream()
                 .map(StoreItemDto::from)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * ✅ 아이템 교환 (포인트 차감 + 재고 감소)
+     * @param request 교환 요청 (userId, itemId 포함)
+     * @return StoreItemExchangeResponse 응답 DTO
+     */
+    public StoreItemExchangeResponse exchangeItem(StoreItemExchangeRequest request) {
+        // 1. 사용자 조회 (예외 처리 포함)
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 2. 아이템 조회
+        StoreItem item = storeRepository.findById(request.getItemId())
+                .orElseThrow(() -> new IllegalArgumentException("아이템을 찾을 수 없습니다."));
+
+        // 3. 포인트, 재고 체크
+        if (user.getPoints() < item.getRequiredPoints()) {
+            throw new IllegalStateException("포인트가 부족합니다.");
+        }
+
+        if (item.getStock() <= 0) {
+            throw new IllegalStateException("재고가 부족합니다.");
+        }
+
+        // 4. 포인트 차감 & 아이템 재고 감소
+        user.setPoints(user.getPoints() - item.getRequiredPoints());
+        item.setStock(item.getStock() - 1);
+
+        // 5. 포인트 사용 내역 기록
+        Points pointUse = Points.builder()
+                .user(user)
+                .amount(-item.getRequiredPoints()) // 포인트 차감은 음수
+                .type(PointsType.ITEM_PURCHASE)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        // 6. 저장
+        pointsRepository.save(pointUse);
+        storeRepository.save(item);
+        userRepository.save(user);
+
+        // 7. 응답 DTO 생성 후 반환
+        return new StoreItemExchangeResponse(
+                item.getId(),
+                item.getName(),
+                item.getRequiredPoints(),
+                user.getPoints() // 현재 남은 포인트
+        );
+    }
 }
-/*
-💡 왜 이런 메서드가 필요한가?
-우리가 컨트롤러에서 DTO로 응답하려면, JPA Entity 자체를 노출시키지 않고 DTO로 감싸야 해.
-그래서 .map(StoreItemDto::from) 같이 변환 과정을 거쳐주는 거야.
-* */

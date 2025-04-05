@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/test/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/community/posts").permitAll()
+                        .requestMatchers(HttpMethod.GET,"api/community/comments/post/**").permitAll()// ✅ 커뮤니티 API 허용
 
                         // ✅ 인증 필요
                         .requestMatchers("/api/users/me").authenticated()
@@ -66,6 +68,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/store/exchange").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/invite/apply").authenticated()
                         .requestMatchers("/api/points/**").authenticated()
+                        // 게시글에서 수정/삭제는 인증 필요
+                        .requestMatchers(HttpMethod.PUT, "/api/community/comments/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/community/comments/**").authenticated()
                         // ✅ 관리자 전용
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/events/**").authenticated()

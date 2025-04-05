@@ -32,7 +32,8 @@ public class PointsController {
     public ResponseEntity<PointsDto> getPointBalance(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        PointsDto response = pointsService.getPointBalance(userDetails.getUserId());
+        int points = pointsService.getCurrentPoints(userDetails.getUserId());
+        PointsDto response = new PointsDto(points); // 필요 시 DTO 변환
         return ResponseEntity.ok(response);
     }
 

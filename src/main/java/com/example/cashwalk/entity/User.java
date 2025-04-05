@@ -2,7 +2,7 @@ package com.example.cashwalk.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
+import java.util.*;
 import java.time.LocalDateTime;
 
 /**
@@ -36,12 +36,35 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // 가입일시
 
-    @Column(nullable = false)
-    private int points; // ✅ 사용자의 현재 보유 포인트
+    @Column(name = "total_points", nullable = false)
+    private int totalPoints; // 현재 총 보유 포인트 (기본값 0)
 
+    /**
+     * ✅ 사용자 포인트 내역 리스트
+     * - 사용자 삭제 시 관련 포인트도 같이 삭제됨
+     */
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Points> pointHistory = new ArrayList<>();
+
+    @OneToMany(mappedBy = "referrer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Invite> invites = new ArrayList<>();
+
+
+    /**
+     * ✅ 사용자 생성 시 자동 초기화
+     */
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
-        this.points = 0; // 가입 시 기본 포인트는 0으로 초기화
+        this.totalPoints = 0;
     }
+    // ✅ 기존 코드 호환을 위해 getPoints() 메서드 추가
+    public int getPoints() {
+        return this.totalPoints;
+    }
+
+    public void setPoints(int points) {
+        this.totalPoints = points;
+    }
+
 }

@@ -1,14 +1,21 @@
 package com.example.cashwalk.service;
 
+import com.example.cashwalk.dto.MonthlyStepsStatsDto;
 import com.example.cashwalk.dto.StepsDto;
+import com.example.cashwalk.dto.StepsStatsDto;
 import com.example.cashwalk.entity.Steps;
 import com.example.cashwalk.entity.User;
 import com.example.cashwalk.repository.StepsRepository;
 import com.example.cashwalk.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import com.example.cashwalk.dto.StepsTodayDto;
+
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 사용자의 걸음 수를 저장하고 포인트를 계산하는 서비스 클래스
@@ -95,5 +102,56 @@ public class StepsService {
                 steps.getPoints()
         );
     }
+    public List<?> getStepStats(User user, String range) {
+        LocalDate today = LocalDate.now();
+        LocalDate startDate;
+
+        switch (range.toLowerCase()) {
+            case "daily" -> {
+                startDate = today;
+                List<Object[]> rawStats = stepsRepository.findStatsSinceDate(user.getId(), startDate);
+                return rawStats.stream()
+                        .map(obj -> new StepsStatsDto(
+                                ((java.sql.Date) obj[0]).toLocalDate(),
+                                ((Number) obj[1]).intValue()
+                        ))
+                        .collect(Collectors.toList());
+            }
+            case "weekly" -> {
+                startDate = today.with(DayOfWeek.MONDAY); // ✅ 이번 주 월요일
+                List<Object[]> rawStats = stepsRepository.findStatsSinceDate(user.getId(), startDate);
+                return rawStats.stream()
+                        .map(obj -> new StepsStatsDto(
+                                ((java.sql.Date) obj[0]).toLocalDate(),
+                                ((Number) obj[1]).intValue()
+                        ))
+                        .collect(Collectors.toList());
+            }
+
+            case "monthly" -> {
+                startDate = today.minusMonths(5).withDayOfMonth(1); // 최근 6개월치 월별 통계
+                List<Object[]> rawStats = stepsRepository.findMonthlyStats(user.getId(), startDate);
+                return rawStats.stream()
+                        .map(obj -> {
+                            int year = ((Number) obj[0]).intValue();
+                            int month = ((Number) obj[1]).intValue();
+                            int steps = ((Number) obj[2]).intValue();
+                            String monthStr = String.format("%04d-%02d", year, month);
+                            return new MonthlyStepsStatsDto(monthStr, steps);
+                        })
+                        .collect(Collectors.toList());
+            }
+            default -> throw new IllegalArgumentException("range 파라미터는 daily, weekly, monthly 중 하나여야 합니다.");
+        }
+
+    }
+    public List<?> getStepStatsByUserId(Long userId, String range) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자 없음"));
+        return getStepStats(user, range);
+    }
+
+
+
 
 }

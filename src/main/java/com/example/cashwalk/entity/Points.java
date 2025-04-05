@@ -36,4 +36,7 @@ public class Points {
     //포인트 변경 시각
     @Column(name="created_at",nullable=false)
     private LocalDateTime createdAt;
+
+    @Column(name="description")
+    private String description; //추천 보상 설명용
 }

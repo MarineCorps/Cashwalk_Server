@@ -18,9 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * 🔐 Spring Security 설정 클래스
- */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -29,50 +26,55 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
 
-    // 🔑 Password 암호화용 빈 등록
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // 🔒 AuthenticationManager 설정
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    // 🧩 사용자 인증 처리 제공자
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService); // 사용자 정보 조회 서비스
-        provider.setPasswordEncoder(passwordEncoder());     // 비밀번호 암호화 방식 설정
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
 
-    // 🔐 핵심 필터 체인 설정
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable()) // CSRF 보호 비활성화 (REST API에서 일반적)
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 세션 사용 X, JWT 방식
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ 인증 없이 접근 허용
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/test/**").permitAll()
-                        .requestMatchers("/api/users/me").authenticated()
-                        .requestMatchers("/api/auth/google").permitAll()
-                        .requestMatchers("/api/ads/**").authenticated()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/store/exchange").authenticated()
 
-                        // ✅ 수정 완료
+                        // ✅ 인증 필요
+                        .requestMatchers("/api/users/me").authenticated()
+                        .requestMatchers("/api/ads/**").authenticated()
+                        .requestMatchers("/api/store/**").authenticated()
+                        .requestMatchers("/api/invite/**").authenticated()
+                        .requestMatchers("/api/steps/stats").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/store/exchange").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/invite/apply").authenticated()
+                        .requestMatchers("/api/points/**").authenticated()
+                        // ✅ 관리자 전용
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/events/**").authenticated()
+
+
                         .anyRequest().authenticated()
                 )
-
-                .authenticationProvider(authenticationProvider()) // 인증 제공자 등록
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // 🔁 우리가 만든 JWT 필터 등록
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

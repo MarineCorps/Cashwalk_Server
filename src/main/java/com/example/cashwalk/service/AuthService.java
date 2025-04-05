@@ -81,11 +81,12 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setPassword(PasswordUtil.encodePassword(request.getPassword()));
         user.setNickname("User_" + System.currentTimeMillis());
-        user.setRole("USER");
+        user.setRole("ROLE_USER"); // ✅ 수정된 부분
 
         userRepository.save(user);
         return "회원가입 성공!";
     }
+
 
     /**
      * ✅ 구글 로그인 처리
@@ -109,7 +110,7 @@ public class AuthService {
                     newUser.setEmail(email);
                     newUser.setPassword("");
                     newUser.setNickname("GoogleUser_" + System.currentTimeMillis());
-                    newUser.setRole("USER");
+                    newUser.setRole("ROLE_USER");
                     return userRepository.save(newUser);
                 });
 
@@ -154,7 +155,7 @@ public class AuthService {
                 newUser.setEmail(email);
                 newUser.setPassword("");
                 newUser.setNickname("KakaoUser_" + System.currentTimeMillis());
-                newUser.setRole("USER");
+                newUser.setRole("ROLE_USER");
                 return userRepository.save(newUser);
             });
 

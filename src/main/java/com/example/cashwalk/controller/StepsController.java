@@ -1,6 +1,9 @@
 package com.example.cashwalk.controller;
 
+import java.util.*;
 import com.example.cashwalk.dto.StepsDto;
+import com.example.cashwalk.dto.StepsStatsDto;
+import com.example.cashwalk.entity.User;
 import com.example.cashwalk.dto.StepsTodayDto;
 import com.example.cashwalk.security.CustomUserDetails;
 import com.example.cashwalk.service.StepsService;
@@ -46,5 +49,25 @@ public class StepsController {
         StepsTodayDto todaySteps = stepsService.getTodaySteps(userDetails.getUserId());
         return ResponseEntity.ok(todaySteps);
     }
+    /**
+     * ✅ 걸음 수 통계 조회 API (일간, 주간, 월간)
+     * GET /api/steps/stats?range=daily|weekly|monthly
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<?> getStepStats(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(name = "range", defaultValue = "weekly") String range
+    ) {
+        try {
+            Long userId = userDetails.getUserId(); // Long으로 userId 추출
+            List<?> stats = stepsService.getStepStatsByUserId(userId, range); // 메서드 분기
+            return ResponseEntity.ok(stats);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+
+
 
 }

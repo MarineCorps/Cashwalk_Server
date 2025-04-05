@@ -32,4 +32,9 @@ public class UserService {
         // Entity → DTO 변환 후 반환
         return UserDto.from(user);
     }
+    public User findById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
+    }
+
 }

@@ -1,17 +1,59 @@
 package com.example.cashwalk.dto;
 
-import lombok.Builder;
-import lombok.Getter;
+import com.example.cashwalk.entity.Post;
+import lombok.*;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 @Getter
+@Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 //@Builder 사용 → 서비스에서 new 없이 .builder() 방식으로 쉽게 객체 생성 가능!
 public class PostResponseDto {
-    private Long id;  //게시글 고유 ID
-    private String content; //게시글 내용
-    private String imageUrl; //이미지 저장 경로
-    private Long userId; //작성자 ID
-    private LocalDateTime createdAt; //생성 시각
+
+    private Long id;
+    private String title;
+    private String content;
+    private String imageUrl;
+    private Long userId;
+    private LocalDateTime createdAt;
+    private String nickname;
+    private int likeCount;
+    private int commentCount;
+    private int views;
+
+    public static PostResponseDto from(Post post, String nickname, int likeCount, int commentCount) {
+        return PostResponseDto.builder()
+                .id(post.getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .imageUrl(post.getImageUrl())
+                .userId(post.getUserId())
+                .createdAt(post.getCreatedAt())
+                .nickname(nickname)
+                .likeCount(likeCount)
+                .commentCount(commentCount)
+                .views(post.getViews())
+                .build();
+    }
+
+    public static PostResponseDto fromObjectArray(Object[] row) {
+        return PostResponseDto.builder()
+                .id(((Number) row[0]).longValue())
+                .title((String) row[1])
+                .content((String) row[2])
+                .imageUrl((String) row[3])
+                .userId(((Number) row[4]).longValue())
+                .createdAt(((Timestamp) row[5]).toLocalDateTime())
+                .nickname((String) row[6])
+                .likeCount(((Number) row[7]).intValue())
+                .commentCount(((Number) row[8]).intValue())
+                .views(((Number) row[9]).intValue())
+                .build();
+    }
+
+
 }

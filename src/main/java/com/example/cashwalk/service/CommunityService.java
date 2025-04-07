@@ -1,120 +1,160 @@
 package com.example.cashwalk.service;
 
-/*📁 📷 이미지 URL 테스트
-Spring Boot는 기본적으로 resources/static 안에 있는 파일은
-http://localhost:8080/uploads/파일이름 으로 접근 가능*/
-import com.example.cashwalk.dto.PostRequestDto;
-import com.example.cashwalk.dto.PostResponseDto;
-import com.example.cashwalk.entity.Post;
-import com.example.cashwalk.repository.CommentRepository;
-import com.example.cashwalk.repository.PostRepository;
+import com.example.cashwalk.dto.*;
+import com.example.cashwalk.entity.*;
+import com.example.cashwalk.exception.PostNotFoundException;
+import com.example.cashwalk.repository.*;
 import com.example.cashwalk.utils.FileUploadUtil;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import com.example.cashwalk.exception.PostNotFoundException;
-import com.example.cashwalk.dto.CommentResponseDto;
-import com.example.cashwalk.dto.PostDetailResponseDto;
-import com.example.cashwalk.entity.Comment;
-import java.util.*;
+import com.example.cashwalk.service.RedisService;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor  // final 필드를 자동으로 주입해주는 생성자 생성
+@RequiredArgsConstructor
 public class CommunityService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
-
-    // 게시글 작성 (이미지 + 내용)
+    private final UserRepository userRepository;
+    private final PostLikeRepository postLikeRepository;
+    private final RedisService redisService;
+    // 게시글 작성
     public PostResponseDto createPost(PostRequestDto requestDto, MultipartFile imageFile) {
-        String imageUrl = null;
-
-        // 이미지가 있는 경우, 서버에 저장 후 URL 반환
-        if (imageFile != null && !imageFile.isEmpty()) {
-            imageUrl = FileUploadUtil.saveFile(imageFile);
-        }
+        String imageUrl = (imageFile != null && !imageFile.isEmpty())
+                ? FileUploadUtil.saveFile(imageFile)
+                : null;
 
         Post post = Post.builder()
+                .title(requestDto.getTitle())
                 .content(requestDto.getContent())
                 .userId(requestDto.getUserId())
+                .boardType(BoardType.valueOf(requestDto.getBoardType()))
                 .imageUrl(imageUrl)
+                .createdAt(LocalDateTime.now())
+                .views(0) // 조회수 초기값
                 .build();
 
-        Post saved = postRepository.save(post);
+        postRepository.save(post);
 
-        return PostResponseDto.builder()
-                .id(saved.getId())
-                .content(saved.getContent())
-                .userId(saved.getUserId())
-                .imageUrl(saved.getImageUrl())
-                .createdAt(saved.getCreatedAt())
-                .build();
+        String nickname = userRepository.findById(post.getUserId())
+                .map(User::getNickname)
+                .orElse("알 수 없음");
+
+        return PostResponseDto.from(post, nickname, 0, 0);
     }
 
-    // 게시글 목록 조회 (페이징)
-    public Page<PostResponseDto> getPostList(Pageable pageable) {
-        return postRepository.findAllByOrderByCreatedAtDesc(pageable)
-                .map(post -> PostResponseDto.builder()
-                        .id(post.getId())
-                        .content(post.getContent())
-                        .userId(post.getUserId())
-                        .imageUrl(post.getImageUrl())
-                        .createdAt(post.getCreatedAt())
-                        .build()
-                );
-    }
-    //게시글 작성
-    public PostResponseDto getPostById(Long id) {
-        Post post=postRepository.findById(id)
-                .orElseThrow(()->new PostNotFoundException("게시글이 존재하지 않습니다."));
+    // 게시글 상세 조회 + 조회수 증가
+    // ✅ 수정: 조회수 증가 제거
+    public PostResponseDto getPostById(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
 
-        return PostResponseDto.builder()
-                .id(post.getId())
-                .content(post.getContent())
-                .imageUrl(post.getImageUrl())
-                .userId(post.getUserId())
-                .createdAt(post.getCreatedAt())
-                .build();
-    }
-    //게시글 수정
-    public PostResponseDto updatePost(Long id, String content,MultipartFile imageFile) {
-        Post post =postRepository.findById(id)
-                .orElseThrow(()-> new PostNotFoundException("게시글이 존재하지 않습니다."));
-        post.setContent(content); //게시글 내용 수정
+        String nickname = userRepository.findById(post.getUserId())
+                .map(User::getNickname)
+                .orElse("알 수 없음");
 
-        if(imageFile != null && !imageFile.isEmpty()) {
-            String imageUrl = FileUploadUtil.saveFile(imageFile);
-            post.setImageUrl(imageUrl); //이미지가 있따면 새로 저장 후 교체
+        int likeCount = postLikeRepository.countByPostIdAndStatus(post.getId(), PostLike.Status.LIKE);
+        int commentCount = commentRepository.countByPostId(post.getId());
+
+        return PostResponseDto.from(post, nickname, likeCount, commentCount);
+    }
+
+    // 조회수 증가 로직 (중복 방지)
+    @Transactional
+    public void increaseViewCountIfNotDuplicate(Long userId, Long postId) {
+        // Redis에 해당 사용자의 조회 기록이 없다면
+        if (!redisService.hasViewPost(userId, postId)) {
+            System.out.println("Redis에 기록 없음 -> 조회수 증가ㄱㄱ");
+
+            // 조회수 증가
+            postRepository.incrementViewCount(postId);
+            // Redis에 기록 (TTL: 1시간)
+            redisService.markPostAsViewed(userId, postId);
         }
-        Post updated = postRepository.save(post); //변경된 내용을 DB에 저장
+        else{
+            System.out.println("이미 조회한 게시글->조회수 증가는 못해요~");
+        }
+        System.out.println("Redis Key: viewed:" + userId + ":" + postId);
 
-        return PostResponseDto.builder()
-                .id(updated.getId())
-                .content(updated.getContent())
-                .userId(updated.getUserId())
-                .imageUrl(updated.getImageUrl())
-                .createdAt(updated.getCreatedAt())
-                .build();
+
     }
-    //게시글 삭제
-    public void deletePost(Long id) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new PostNotFoundException("게시글이 존재하지 않습니다."));
-        postRepository.delete(post); //삭제 처리
-        //해당 엔티티를 DB에서 삭제(JPA가 SQL DELETE 쿼리 수행)
+
+
+
+
+    // 게시글 수정
+    public PostResponseDto updatePost(Long postId, String content, MultipartFile imageFile) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
+
+        post.setContent(content);
+        if (imageFile != null && !imageFile.isEmpty()) {
+            post.setImageUrl(FileUploadUtil.saveFile(imageFile));
+        }
+
+        postRepository.save(post);
+
+        String nickname = userRepository.findById(post.getUserId())
+                .map(User::getNickname)
+                .orElse("알 수 없음");
+
+        int likeCount = postLikeRepository.countByPostIdAndStatus(post.getId(), PostLike.Status.LIKE);
+        int commentCount = commentRepository.countByPostId(post.getId());
+
+        return PostResponseDto.from(post, nickname, likeCount, commentCount);
     }
-    //게시글 + 댓글 통합 데이터를 반환하는 서비스 로직
+
+    // 게시글 삭제
+    public void deletePost(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
+        postRepository.delete(post);
+    }
+
+    // 게시글 리스트 조회 (정렬 지원)
+    public Page<PostResponseDto> getPostList(BoardType boardType, String sort, Pageable pageable) {
+        Page<Object[]> results;
+
+        if ("likes".equals(sort)) {
+            results = postRepository.findAllOrderByLikes(
+                    boardType != null ? boardType.name() : null,
+                    PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
+        } else if ("comments".equals(sort)) {
+            results = postRepository.findAllOrderByCommentCount(
+                    boardType != null ? boardType.name() : null,
+                    PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
+        } else if ("views".equals(sort)) {
+            results = postRepository.findAllOrderByViews(
+                    boardType != null ? boardType.name() : null,
+                    PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
+        } else {
+            Page<Post> postPage = postRepository.findAllByBoardTypeOrderByCreatedAtDesc(boardType, pageable);
+            return postPage.map(post -> {
+                String nickname = userRepository.findById(post.getUserId())
+                        .map(User::getNickname)
+                        .orElse("알 수 없음");
+                int likeCount = postLikeRepository.countByPostIdAndStatus(post.getId(), PostLike.Status.LIKE);
+                int commentCount = commentRepository.countByPostId(post.getId());
+                return PostResponseDto.from(post, nickname, likeCount, commentCount);
+            });
+        }
+
+        return results.map(PostResponseDto::fromObjectArray);
+    }
+
+    // 게시글 상세 + 댓글 포함 응답
     public PostDetailResponseDto getPostDetail(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new PostNotFoundException("게시글이 존재하지 않습니다."));
 
-        // 댓글 리스트 조회 (Post 기준)
         List<Comment> comments = commentRepository.findByPostOrderByCreatedAtDesc(post);
-
-        // 댓글 → DTO 변환
-        List<CommentResponseDto> commentDtoList = comments.stream()
+        List<CommentResponseDto> commentDtos = comments.stream()
                 .map(comment -> CommentResponseDto.builder()
                         .id(comment.getId())
                         .userId(comment.getUser().getId())
@@ -123,18 +163,72 @@ public class CommunityService {
                         .build())
                 .toList();
 
-        // 게시글 + 댓글을 묶어서 반환
         return PostDetailResponseDto.builder()
                 .id(post.getId())
                 .content(post.getContent())
                 .imageUrl(post.getImageUrl())
                 .userId(post.getUserId())
                 .createdAt(post.getCreatedAt())
-                .comments(commentDtoList)
+                .comments(commentDtos)
                 .build();
     }
 
+    // 좋아요 토글
+    @Transactional
+    public void likePost(Long postId, Long userId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("사용자 정보를 찾을 수 없습니다."));
 
+        Optional<PostLike> optional = postLikeRepository.findByUserAndPost(user, post);
 
+        if (optional.isPresent()) {
+            PostLike like = optional.get();
+            if (like.getStatus() == PostLike.Status.LIKE) {
+                postLikeRepository.delete(like);
+            } else {
+                like.setStatus(PostLike.Status.LIKE);
+            }
+        } else {
+            postLikeRepository.save(PostLike.builder()
+                    .user(user)
+                    .post(post)
+                    .status(PostLike.Status.LIKE)
+                    .build());
+        }
+    }
 
+    // 싫어요 토글
+    @Transactional
+    public void dislikePost(Long postId, Long userId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("사용자 정보를 찾을 수 없습니다."));
+
+        Optional<PostLike> optional = postLikeRepository.findByUserAndPost(user, post);
+
+        if (optional.isPresent()) {
+            PostLike like = optional.get();
+            if (like.getStatus() == PostLike.Status.DISLIKE) {
+                postLikeRepository.delete(like);
+            } else {
+                like.setStatus(PostLike.Status.DISLIKE);
+            }
+        } else {
+            postLikeRepository.save(PostLike.builder()
+                    .user(user)
+                    .post(post)
+                    .status(PostLike.Status.DISLIKE)
+                    .build());
+        }
+    }
+
+    // 좋아요/싫어요 수 조회
+    public PostReactionCountResponse getReactionCounts(Long postId) {
+        int likeCount = postLikeRepository.countByPostIdAndStatus(postId, PostLike.Status.LIKE);
+        int dislikeCount = postLikeRepository.countByPostIdAndStatus(postId, PostLike.Status.DISLIKE);
+        return new PostReactionCountResponse(likeCount, dislikeCount);
+    }
 }

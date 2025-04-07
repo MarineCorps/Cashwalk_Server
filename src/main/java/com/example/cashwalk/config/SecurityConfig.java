@@ -1,5 +1,6 @@
 package com.example.cashwalk.config;
 
+import com.example.cashwalk.security.CustomAuthenticationEntryPoint;
 import com.example.cashwalk.security.JwtAuthenticationFilter;
 import com.example.cashwalk.security.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -52,14 +54,17 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ 인증 없이 접근 허용
+                        //인증이 없어도 되는 기능
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/test/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/community/posts").permitAll()
-                        .requestMatchers(HttpMethod.GET,"api/community/comments/post/**").permitAll()// ✅ 커뮤니티 API 허용
+                        .requestMatchers(HttpMethod.GET, "/api/community/posts/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"api/community/comments/post/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/community/comments/*/reactions").permitAll()
 
-                        // ✅ 인증 필요
+                        // 인증필요
+                        .requestMatchers(HttpMethod.POST, "/api/community/posts/*/like").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/community/posts/*/dislike").authenticated()
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/ads/**").authenticated()
                         .requestMatchers("/api/store/**").authenticated()
@@ -68,15 +73,21 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/store/exchange").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/invite/apply").authenticated()
                         .requestMatchers("/api/points/**").authenticated()
-                        // 게시글에서 수정/삭제는 인증 필요
                         .requestMatchers(HttpMethod.PUT, "/api/community/comments/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/community/comments/**").authenticated()
-                        // ✅ 관리자 전용
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/events/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/community/comments/*/like").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/community/comments/*/dislike").authenticated()
 
+                        //관리자기능
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        
+                        
 
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)  // ✅ 인증 실패 시 사용자 메시지 처리
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

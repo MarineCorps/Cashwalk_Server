@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-
+import java.util.*;
 @Entity
 @Table(name = "comments")
 @Getter
@@ -30,6 +30,9 @@ public class Comment {
 
     @Column(nullable = false, length = 500)
     private String content;
+
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommentReaction> reactions = new ArrayList<>();
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

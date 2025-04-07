@@ -43,7 +43,9 @@ dependencies {
     implementation 'com.google.api-client:google-api-client:1.34.1'
     implementation 'com.google.http-client:google-http-client-jackson2:1.39.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-
+    // Redis 관련 의존성 추가
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.apache.commons:commons-pool2'
 
 }
 

@@ -1,11 +1,17 @@
 package com.example.cashwalk.controller;
 
+import com.example.cashwalk.dto.PostResponseDto;
+import com.example.cashwalk.entity.BoardType;
 import com.example.cashwalk.security.CustomUserDetails;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.example.cashwalk.dto.CommentRequestDto;
 import com.example.cashwalk.dto.CommentResponseDto;
 import com.example.cashwalk.dto.CommentUpdateRequestDto;
 import com.example.cashwalk.service.CommentService;
+import com.example.cashwalk.service.CommunityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +24,7 @@ import java.util.*;
 public class CommentController {
 
     private final CommentService commentService;
+    private final CommunityService communityService;
 
     // ✅ 댓글 작성 (postId는 경로에 포함)
     @PostMapping("/post/{postId}")
@@ -66,6 +73,34 @@ public class CommentController {
         response.put("message", "댓글이 삭제되었습니다.");
 
         return ResponseEntity.ok(response);  // 200 OK + 메시지
+    }
+    //댓글 추천
+    @PostMapping("/comment/{id}/like")
+    public ResponseEntity<Map<String, String>> likeComment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ){
+        commentService.likeComment(id,userDetails.getUserId());
+        Map<String,String> response = new HashMap<>();
+        response.put("message","좋아요");
+        return ResponseEntity.ok(response);
+    }
+    //댓글 비추천
+    @PostMapping("/comment/{id}/dislike")
+    public ResponseEntity<Map<String,String>> dislikeComment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ){
+        commentService.dislikeComment(id,userDetails.getUserId());
+        Map<String,String> response = new HashMap<>();
+        response.put("message","비추천");
+        return ResponseEntity.ok(response);
+    }
+    //추천/비추천 개수 조회
+    @GetMapping("/{id}/reactions")
+    public ResponseEntity<Map<String, Integer>> getCommentReactions(@PathVariable Long id) {
+        Map<String, Integer> reactionCounts = commentService.getReactionCounts(id);
+        return ResponseEntity.ok(reactionCounts);
     }
 
 

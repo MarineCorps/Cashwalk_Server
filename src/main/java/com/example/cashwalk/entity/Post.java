@@ -28,8 +28,13 @@ public class Post {
 
     private String imageUrl;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", insertable = false, updatable = false)
     private Long userId;
+
+    // ✅ 사용자 연관관계 추가
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -38,14 +43,19 @@ public class Post {
     @Column(nullable = false)
     private int views = 0;
 
+    @Column(nullable = false)
+    private int likeCount = 0;  // ✅ 좋아요 수 필드 추가
+
+    @Column(nullable = false)
+    private int commentCount = 0;  // ✅ 댓글 수 필드 추가
 
     private LocalDateTime createdAt;
 
-    // ✅ 댓글 연관관계 - 게시글 삭제 시 같이 삭제됨
+    @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 
-    // ✅ 좋아요 연관관계 - 게시글 삭제 시 같이 삭제됨
+    @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostLike> likes = new ArrayList<>();
 }

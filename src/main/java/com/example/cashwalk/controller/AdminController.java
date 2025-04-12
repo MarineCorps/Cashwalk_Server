@@ -1,6 +1,7 @@
 package com.example.cashwalk.controller;
 
 import com.example.cashwalk.dto.ModifyPointsRequest;
+import com.example.cashwalk.dto.ModifyPostStatsRequest;
 import com.example.cashwalk.dto.UserDto;
 import com.example.cashwalk.service.AdminService;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,12 @@ public class AdminController {
     public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
         adminService.deleteUser(userId);
         return ResponseEntity.ok("사용자가 삭제되었습니다.");
+    }
+    // ✅ 게시글 좋아요/조회수 조작 API
+    @PostMapping("/posts/stats")
+    public ResponseEntity<String> modifyPostStats(@RequestBody ModifyPostStatsRequest request) {
+        adminService.modifyPostStats(request);
+        return ResponseEntity.ok("게시글 통계가 수정되었습니다.");
     }
 
 }

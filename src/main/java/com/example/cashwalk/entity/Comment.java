@@ -37,6 +37,11 @@ public class Comment {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Comment parent;
+
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

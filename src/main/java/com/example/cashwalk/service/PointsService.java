@@ -6,7 +6,7 @@ import com.example.cashwalk.entity.User;
 import com.example.cashwalk.repository.PointsRepository;
 import com.example.cashwalk.repository.UserRepository;
 import com.example.cashwalk.dto.PointsHistoryDto;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;

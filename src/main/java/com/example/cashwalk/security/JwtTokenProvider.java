@@ -16,7 +16,7 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     private final Key key;
-    private final long expirationMillis = 1000 * 60 * 60; // 1시간
+    private final long expirationMillis = 1000 * 60 * 60*24*7; // 1시간
 
     // 🔐 생성자에서 application.properties로부터 키를 주입받아 초기화
     public JwtTokenProvider(@Value("${jwt.secret}") String secretKey) {

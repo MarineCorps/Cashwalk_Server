@@ -1,11 +1,24 @@
 package com.example.cashwalk.controller;
-
-import com.example.cashwalk.dto.PostDetailResponseDto;
-import com.example.cashwalk.dto.PostRequestDto;
+// import 추가
+import com.example.cashwalk.service.CommentService;
+import com.example.cashwalk.dto.CommentResponseDto;
 import com.example.cashwalk.dto.PostResponseDto;
-import com.example.cashwalk.entity.BoardType;
 import com.example.cashwalk.security.CustomUserDetails;
 import com.example.cashwalk.service.CommunityService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.http.ResponseEntity;
+import com.example.cashwalk.service.BookmarkService;
+import org.springframework.http.ResponseEntity;
+import java.util.Map;
+
+import com.example.cashwalk.dto.*;
+import com.example.cashwalk.entity.BoardType;
+import com.example.cashwalk.entity.Post;
+import com.example.cashwalk.security.CustomUserDetails;
+import com.example.cashwalk.service.CommunityService;
+import com.example.cashwalk.service.ViewCountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +27,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.cashwalk.security.CustomUserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.*;
 
@@ -23,6 +38,33 @@ import java.util.*;
 public class CommunityController {
 
     private final CommunityService communityService;
+    private final ViewCountService viewCountService;
+    private final BookmarkService bookmarkService;
+    private final CommentService commentService;
+    // ✅ 검색 + 정렬 API
+    @GetMapping("/search")
+    public Page<PostResponseDto> searchPosts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "latest") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        PostSearchCondition condition = new PostSearchCondition();
+        condition.setKeyword(keyword);
+        condition.setSort(sort);
+        condition.setPage(page);
+        condition.setSize(size);
+
+        Long currentUserId=userDetails.getUserId();
+
+        return communityService.searchPosts(condition,currentUserId);
+
+        /* currentUserId가 필요한 이유:
+           우리가 "나(currentUserId)가 차단한 유저"들의 글을 보이지 않게 해야 되니까
+          👉 당연히 "지금 로그인한 사용자"가 누군지 알아야 함!*/
+    }
+
 
     // 게시글 작성
     @PostMapping("/posts")
@@ -36,23 +78,13 @@ public class CommunityController {
         return ResponseEntity.ok(response);
     }
 
-    // 게시글 목록 조회 (정렬 및 페이지네이션 지원)
-    @GetMapping("/posts")
-    public ResponseEntity<Page<PostResponseDto>> getPostList(
-            @RequestParam(value = "boardType", required = false) BoardType boardType,
-            @RequestParam(value = "sort", required = false, defaultValue = "createdAt") String sort,
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
-        Page<PostResponseDto> posts = communityService.getPostList(boardType, sort, pageable);
-        return ResponseEntity.ok(posts);
-    }
-
+    //조회수 중복 방지
     @GetMapping("/posts/{id}")
     public ResponseEntity<PostResponseDto> getPost(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userId = userDetails.getUserId();
 
         // 조회수 중복 방지 로직 적용
-        communityService.increaseViewCountIfNotDuplicate(userId, id);
+        viewCountService.increaseIfNotDuplicate(userId, id);
 
         // 게시글 데이터 조회
         PostResponseDto post = communityService.getPostById(id);
@@ -80,10 +112,15 @@ public class CommunityController {
 
     // 게시글 상세 + 댓글 조회
     @GetMapping("/posts/{id}/detail")
-    public ResponseEntity<PostDetailResponseDto> getPostDetail(@PathVariable Long id) {
-        PostDetailResponseDto postDetail = communityService.getPostDetail(id);
-        return ResponseEntity.ok(postDetail);
+    public ResponseEntity<PostDetailResponseDto> getPostDetail(
+            @PathVariable("id") Long postId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long currentUserId = userDetails.getUserId();
+        PostDetailResponseDto response = communityService.getPostDetail(postId, currentUserId);
+        return ResponseEntity.ok(response);
     }
+
 
     // 게시글 추천
     @PostMapping("/posts/{id}/like")
@@ -112,4 +149,82 @@ public class CommunityController {
         response.put("message", "비추천");
         return ResponseEntity.ok(response);
     }
+    // 좋아요/비추천 수 조회
+    @GetMapping("/posts/{id}/reactions")
+    public ResponseEntity<PostReactionCountResponse> getReactionCounts(@PathVariable Long id) {
+        return ResponseEntity.ok(communityService.getReactionCounts(id));
+    }
+    //북마크 토클(등록/해제기능0
+    @PostMapping("/posts/{id}/bookmark")
+    public ResponseEntity<Map<String, String>> toggleBookmark(
+            @PathVariable("id") Long postId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        boolean added = bookmarkService.toggleBookmark(userId, postId);
+
+        Map<String, String> result = Map.of(
+                "message", added ? "북마크 등록됨" : "북마크 해제됨"
+        );
+        return ResponseEntity.ok(result);
+    }
+    //내가 북마크한거 조회
+    @GetMapping("/bookmarks/me")
+    public ResponseEntity<List<PostResponseDto>> getMyBookmarks(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        List<PostResponseDto> bookmarks = bookmarkService.getBookmarksByUser(userId);
+        return ResponseEntity.ok(bookmarks);
+    }
+    //내가 쓴 글 조회
+    @GetMapping("/myposts")
+    public ResponseEntity<List<PostResponseDto>> getMyPosts(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        List<PostResponseDto> posts = communityService.getMyPosts(userId);
+        return ResponseEntity.ok(posts);
+    }
+    //내가 댓글 단 게시글 목록 조회
+    @GetMapping("/mycomments")
+    public ResponseEntity<List<PostResponseDto>> getMyCommentedPosts(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        List<PostResponseDto> posts = communityService.getMyCommentedPosts(userId);
+        return ResponseEntity.ok(posts);
+    }
+    //내가 작성한 댓글 목록 조회
+    @GetMapping("/my-comments")
+    public ResponseEntity<List<CommentResponseDto>> getMyComments(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        List<CommentResponseDto> comments = commentService.getMyComments(userId);
+        return ResponseEntity.ok(comments);
+    }
+    //댓글 단 게시글 목록 조회
+    @GetMapping("/my-commented-posts")
+    public ResponseEntity<List<PostResponseDto>> getPostsICommented(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        List<PostResponseDto> posts = communityService.getPostsICommented(userId);
+        return ResponseEntity.ok(posts);
+    }
+
+    @GetMapping("/my-replied-comments")
+    public ResponseEntity<List<CommentResponseDto>> getMyCommentsWithReplies(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        List<CommentResponseDto> comments = commentService.getMyCommentsWithReplies(userId);
+        return ResponseEntity.ok(comments);
+    }
+
+
+
+
+
 }

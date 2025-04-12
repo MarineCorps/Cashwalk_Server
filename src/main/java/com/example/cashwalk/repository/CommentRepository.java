@@ -6,7 +6,10 @@ package com.example.cashwalk.repository;
 
 import com.example.cashwalk.entity.Comment;
 import com.example.cashwalk.entity.Post;
+import com.example.cashwalk.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 public interface CommentRepository extends JpaRepository<Comment, Long> {
@@ -14,6 +17,22 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     int countByPost(Post post);
     int countByPostId(Long postId);
+
+    // ✅ 내가 쓴 댓글 조회
+    List<Comment> findAllByUser(User user);
+
+    // 내가 작성한 댓글을 작성일 기준으로 내림차순으로 조회해줌
+    List<Comment> findAllByUserOrderByCreatedAtDesc(User user);
+
+    // 댓글 단 게시글 목록 조회를위해
+    // 한 게시글에 여러개 댓글 여러개 달아도 한번만 특정사용자만 최신글 기준 정렬
+    @Query("SELECT DISTINCT c.post FROM Comment c WHERE c.user.id = :userId ORDER BY c.post.createdAt DESC")
+    List<Post> findDistinctPostsCommentedByUser(@Param("userId") Long userId);
+
+
+    @Query("SELECT c FROM Comment c WHERE c.user.id = :userId AND EXISTS (" +
+            "SELECT r FROM Comment r WHERE r.parent.id = c.id)")
+    List<Comment> findMyCommentsWithReplies(@Param("userId") Long userId);
 
 
 }

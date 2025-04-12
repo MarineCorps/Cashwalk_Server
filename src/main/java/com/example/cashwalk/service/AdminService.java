@@ -1,5 +1,12 @@
 package com.example.cashwalk.service;
+// 필요한 import 추가
+import com.example.cashwalk.dto.ModifyPostStatsRequest;
+import com.example.cashwalk.entity.Post;
+import com.example.cashwalk.entity.PostLike;
+import com.example.cashwalk.repository.PostRepository;
+import com.example.cashwalk.repository.PostLikeRepository;
 
+import org.springframework.transaction.annotation.Transactional;
 import com.example.cashwalk.dto.ModifyPointsRequest;
 import com.example.cashwalk.dto.UserDto;
 import com.example.cashwalk.entity.User;
@@ -16,6 +23,8 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final PointsService pointsService;
+    private final PostRepository postRepository;
+    private final PostLikeRepository postLikeRepository;
 
     /**
      * ✅ 전체 사용자 목록을 조회하는 메서드
@@ -51,5 +60,38 @@ public class AdminService {
         User user=userRepository.findById(userId)
                 .orElseThrow(()->new IllegalArgumentException("사용자를 찾을 수 없습니다."));
         userRepository.delete(user); //추후 cascade여부에 따라 예외발생가능
+    }
+
+
+    /**
+     * ✅ 관리자 전용: 게시글 좋아요/조회수 조작
+     */
+    @Transactional
+    public void modifyPostStats(ModifyPostStatsRequest request) {
+        Post post = postRepository.findById(request.getPostId())
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글을 찾을 수 없습니다."));
+
+        // 좋아요 수 조작
+        if (request.getLikeCount() != null) {
+            // 기존 좋아요 삭제 (LIKE만)
+            postLikeRepository.deleteAllByPostIdAndStatus(post.getId(), PostLike.Status.LIKE);
+
+            // 가짜 유저 ID로 가상의 좋아요 입력
+            for (int i = 1; i <= request.getLikeCount(); i++) {
+                PostLike like = PostLike.builder()
+                        .post(post)
+                        .status(PostLike.Status.LIKE)
+                        .user(null) // 테스트용 가상 유저 → Controller에서 채우는 방식도 가능
+                        .build();
+                postLikeRepository.save(like);
+            }
+        }
+
+        // 조회수 조작
+        if (request.getViewCount() != null) {
+            post.setViews(request.getViewCount());
+        }
+
+        postRepository.save(post);
     }
 }

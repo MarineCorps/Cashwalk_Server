@@ -54,40 +54,68 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        //인증이 없어도 되는 기능
+                        //  [공개 API - 인증 없이 접근 가능]
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/test/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/community/search").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/community/posts/**").permitAll()
-                        .requestMatchers(HttpMethod.GET,"api/community/comments/post/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/community/comments/*/reactions").permitAll()
-
-                        // 인증필요
+                        .requestMatchers(HttpMethod.GET, "/api/community/comments/**").permitAll()
+                        // 인증 필요함
+                        //  [커뮤니티 게시글 - 인증 필요]
+                        .requestMatchers(HttpMethod.POST, "/api/community/posts/*/bookmark").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/community/bookmarks/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/community/posts/*/like").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/community/posts/*/dislike").authenticated()
-                        .requestMatchers("/api/users/me").authenticated()
-                        .requestMatchers("/api/ads/**").authenticated()
-                        .requestMatchers("/api/store/**").authenticated()
-                        .requestMatchers("/api/invite/**").authenticated()
-                        .requestMatchers("/api/steps/stats").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/store/exchange").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/invite/apply").authenticated()
-                        .requestMatchers("/api/points/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/community/posts/*/detail").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/community/posts").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/community/posts/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/community/posts/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/community/myposts").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/community/mycomments").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/community/my-comments").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/community/my-commented-posts").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/community/my-replied-comments").authenticated()
+
+                        //  [커뮤니티 댓글 - 인증 필요]
+                        .requestMatchers(HttpMethod.POST, "/api/community/comments/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/community/comments/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/community/comments/**").authenticated()
-                        .requestMatchers("/api/events/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/community/comments/*/like").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/community/comments/*/dislike").authenticated()
 
-                        //관리자기능
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        
-                        
+                        //  [사용자 정보 - 인증 필요]
+                        .requestMatchers("/api/users/me").authenticated()
 
+                        //  [광고 / 포인트 / 초대 / 스토어 - 인증 필요]
+                        .requestMatchers("/api/ads/**").authenticated()
+                        .requestMatchers("/api/store/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/store/exchange").authenticated()
+                        .requestMatchers("/api/invite/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/invite/apply").authenticated()
+                        .requestMatchers("/api/points/**").authenticated()
+                        .requestMatchers("/api/steps/stats").authenticated()
+
+                        //  [이벤트 - 인증 필요]
+                        .requestMatchers("/api/events/**").authenticated()
+                        // 사용자 차단 기능
+                        // 기존 설정 중 authorizeHttpRequests 내부에 아래 3줄 추가
+                        .requestMatchers(HttpMethod.POST, "/api/users/block/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/block/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/blocked").authenticated()
+
+                        //캐시톡
+                        .requestMatchers("/api/chat/**").authenticated()
+
+                        //  [관리자 전용 API]
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // 신고기능
+                        .requestMatchers(HttpMethod.POST, "/api/report").authenticated()
+                        //  [기타 모든 요청은 인증 필요]
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(e -> e
-                        .authenticationEntryPoint(customAuthenticationEntryPoint)  // ✅ 인증 실패 시 사용자 메시지 처리
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

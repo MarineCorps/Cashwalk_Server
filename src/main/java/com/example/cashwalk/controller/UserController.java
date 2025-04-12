@@ -1,5 +1,6 @@
 package com.example.cashwalk.controller;
 
+import com.example.cashwalk.dto.BlockedUserDto;
 import com.example.cashwalk.dto.UserDto;
 import com.example.cashwalk.security.CustomUserDetails;
 import com.example.cashwalk.service.UserService;
@@ -7,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 사용자 관련 API를 처리하는 컨트롤러
@@ -30,5 +33,44 @@ public class UserController {
     public ResponseEntity<UserDto> getMyInfo(@AuthenticationPrincipal CustomUserDetails userDetails) {
         // 로그인한 사용자의 ID를 가져와서 서비스로 전달
         return ResponseEntity.ok(userService.getUserInfo(userDetails.getUserId()));
+    }
+
+    /**
+     * 다른 유저 차단
+     */
+    //차단요청 처리
+    @PostMapping("/block/{targetUserId}")
+    public ResponseEntity<String> blockUser(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long targetUserId
+    ) {
+        Long blockerId = userDetails.getUserId();
+        userService.blockUser(blockerId, targetUserId);
+        return ResponseEntity.ok("해당 유저를 차단했습니다.");
+    }
+
+    /**
+     * 차단 해제
+     */
+    @DeleteMapping("/block/{targetUserId}")
+    public ResponseEntity<String> unblockUser(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long targetUserId
+    ) {
+        Long blockerId = userDetails.getUserId();
+        userService.unblockUser(blockerId, targetUserId);
+        return ResponseEntity.ok("차단을 해제했습니다.");
+    }
+
+    /**
+     * 내가 차단한 유저 목록 조회
+     */
+    @GetMapping("/blocked")
+    public ResponseEntity<List<BlockedUserDto>> getBlockedUsers(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long blockerId = userDetails.getUserId();
+        List<BlockedUserDto> blockedUsers = userService.getBlockedUsers(blockerId);
+        return ResponseEntity.ok(blockedUsers);
     }
 }

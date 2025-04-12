@@ -38,14 +38,17 @@ public class CommentController {
         return ResponseEntity.ok(response);
     }
 
-    // ✅ 댓글 목록 조회
+    // ✅ 댓글 목록 조회 (차단 유저 댓글 제외)
     @GetMapping("/post/{postId}")
     public ResponseEntity<List<CommentResponseDto>> getComments(
-            @PathVariable Long postId
-    ){
-        List<CommentResponseDto> comments = commentService.getCommentsByPost(postId);
+            @PathVariable Long postId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId(); // ✅ JWT에서 사용자 ID 추출
+        List<CommentResponseDto> comments = commentService.getCommentsByPostId(postId, userId);
         return ResponseEntity.ok(comments);
     }
+
 
     // ✅ 댓글 수정
     @PutMapping("/{id}")
@@ -102,6 +105,5 @@ public class CommentController {
         Map<String, Integer> reactionCounts = commentService.getReactionCounts(id);
         return ResponseEntity.ok(reactionCounts);
     }
-
 
 }

@@ -33,7 +33,7 @@ public class EventsService {
         int reward = 10;
 
         // 포인트 적립 처리
-        pointsService.addReward(user, reward, PointsType.ATTENDANCE,"출석보상지급");
+        pointsService.addReward(user, reward, PointsType.ATTENDANCE,"출석보상지급",null);
 
         // 출석 기록 저장
         Attendance attendance = Attendance.builder()

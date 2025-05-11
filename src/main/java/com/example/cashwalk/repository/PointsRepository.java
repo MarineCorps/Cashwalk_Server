@@ -6,14 +6,15 @@ import com.example.cashwalk.entity.User;
 import com.example.cashwalk.entity.PointsType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
-public interface PointsRepository extends JpaRepository<Points, Long> {
+public interface PointsRepository extends JpaRepository<Points, Long>, PointsQuerydslRepository {
 
     /**
      * ✅ 특정 사용자의 총 포인트 잔액 계산
@@ -53,4 +54,20 @@ public interface PointsRepository extends JpaRepository<Points, Long> {
             @Param("user") User user,
             @Param("type") PointsType type
     );
+
+    // 오늘 날짜 기준으로 이미 산책 포인트(NWALK)를 적립했는지 여부 확인
+    boolean existsByUserAndTypeAndCreatedAtBetween(User user, PointsType type, LocalDateTime start, LocalDateTime end);
+
+    @Modifying
+    @Query("DELETE FROM Points p WHERE p.type = 'STEP_REWARD' AND p.createdAt < :cutoff")
+    void deleteOldStepRewards(@Param("cutoff") LocalDateTime cutoff);
+
+    // ✅ 오늘 특정 유저가 NWALK 포인트 받은 모든 기록 조회
+    List<Points> findAllByUserAndTypeAndCreatedAtBetween(
+            User user,
+            PointsType type,
+            LocalDateTime start,
+            LocalDateTime end
+    );
+
 }

@@ -3,8 +3,11 @@ package com.example.cashwalk.service;
 import com.example.cashwalk.dto.MonthlyStepsStatsDto;
 import com.example.cashwalk.dto.StepsDto;
 import com.example.cashwalk.dto.StepsStatsDto;
+import com.example.cashwalk.entity.Points;
+import com.example.cashwalk.entity.PointsType;
 import com.example.cashwalk.entity.Steps;
 import com.example.cashwalk.entity.User;
+import com.example.cashwalk.repository.PointsRepository;
 import com.example.cashwalk.repository.StepsRepository;
 import com.example.cashwalk.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +17,7 @@ import com.example.cashwalk.dto.StepsTodayDto;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,6 +34,7 @@ public class StepsService {
 
     private final StepsRepository stepsRepository;
     private final UserRepository userRepository;
+    private final PointsRepository pointsRepository;
 
     /**
      * 사용자의 걸음 수를 보고 받아 저장하거나 업데이트
@@ -38,77 +43,78 @@ public class StepsService {
      * @param request 사용자가 보낸 걸음 수 DTO
      */
     public void reportSteps(Long userId, StepsDto request) {
-        // 1. 사용자 정보 조회
+        // 1. 사용자 조회
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        // 2. 오늘 날짜 가져오기
         LocalDate today = LocalDate.now();
-
-        // 3. 오늘의 걸음 수 기록이 이미 있는지 확인
-        Steps stepsRecord = stepsRepository.findByUserAndDate(user, today)
-                .orElse(null);
+        Steps existingSteps = stepsRepository.findByUserAndDate(user, today).orElse(null);
 
         int newSteps = request.getSteps();
 
-        if (stepsRecord == null) {
-            // 4. 없으면 → 새로 만들기 (최초 보고)
-            int points = newSteps / 100; // 100걸음 = 1포인트 규칙 (예시)
-
+        if (existingSteps == null) {
             Steps newRecord = Steps.builder()
                     .user(user)
                     .date(today)
-                    .steps(newSteps)
-                    .points(points)
+                    .stepCount(newSteps)
+                    .points(0)
                     .lastUpdated(today)
                     .build();
 
             stepsRepository.save(newRecord);
 
         } else {
-            // 5. 있으면 → 걸음 수 증가분만큼 업데이트
+            // 🔁 기존 기록이 있을 경우 업데이트
+            if (newSteps <= existingSteps.getStepCount()) return;
 
-            // 기존보다 줄어들었으면 무시
-            if (newSteps <= stepsRecord.getSteps()) return;
-
-            int stepDiff = newSteps - stepsRecord.getSteps();
+            int stepDiff = newSteps - existingSteps.getStepCount();
             int pointDiff = stepDiff / 100;
 
-            // 포인트 계산해서 추가
-            stepsRecord.setSteps(newSteps);
-            stepsRecord.setPoints(stepsRecord.getPoints() + pointDiff);
-            stepsRecord.setLastUpdated(today);
-
-            stepsRepository.save(stepsRecord);
+            // 🟡 기존 기록 업데이트
+            existingSteps.setStepCount(newSteps);
+            existingSteps.setPoints(existingSteps.getPoints() + pointDiff);
+            existingSteps.setLastUpdated(today);
+            stepsRepository.save(existingSteps);
         }
     }
+
+
+
     public StepsTodayDto getTodaySteps(Long userId) {
+        System.out.println("📌 [StepsService] getTodaySteps 호출됨 - userId = " + userId);
+
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new RuntimeException("❌ [StepsService] 사용자 조회 실패"));
+
+        System.out.println("✅ [StepsService] 사용자 조회 성공 - 닉네임: " + user.getNickname());
 
         LocalDate today = LocalDate.now();
+        System.out.println("📅 [StepsService] 오늘 날짜: " + today);
 
         Steps steps = stepsRepository.findByUserAndDate(user, today)
                 .orElse(null);
 
         if (steps == null) {
-            // 오늘 기록이 없을 경우 0으로 반환
+            System.out.println("⚠️ [StepsService] 오늘 걸음 수 기록 없음 - 0 반환");
             return new StepsTodayDto(today.toString(), 0, 0);
         }
 
+        System.out.println("✅ [StepsService] 오늘 걸음 수 기록 조회 성공");
+        System.out.println("👉 stepCount: " + steps.getStepCount() + ", points: " + steps.getPoints());
+
         return new StepsTodayDto(
                 today.toString(),
-                steps.getSteps(),
+                steps.getStepCount(),
                 steps.getPoints()
         );
     }
-    public List<?> getStepStats(User user, String range) {
-        LocalDate today = LocalDate.now();
+
+    public List<?> getStepStats(User user, String range, LocalDate baseDate) {
         LocalDate startDate;
 
         switch (range.toLowerCase()) {
             case "daily" -> {
-                startDate = today;
+                startDate = baseDate; // ✅ baseDate 그대로 사용
                 List<Object[]> rawStats = stepsRepository.findStatsSinceDate(user.getId(), startDate);
                 return rawStats.stream()
                         .map(obj -> new StepsStatsDto(
@@ -118,7 +124,7 @@ public class StepsService {
                         .collect(Collectors.toList());
             }
             case "weekly" -> {
-                startDate = today.with(DayOfWeek.MONDAY); // ✅ 이번 주 월요일
+                startDate = baseDate.with(DayOfWeek.MONDAY); // ✅ baseDate 기준 이번 주 월요일
                 List<Object[]> rawStats = stepsRepository.findStatsSinceDate(user.getId(), startDate);
                 return rawStats.stream()
                         .map(obj -> new StepsStatsDto(
@@ -127,29 +133,67 @@ public class StepsService {
                         ))
                         .collect(Collectors.toList());
             }
-
             case "monthly" -> {
-                startDate = today.minusMonths(5).withDayOfMonth(1); // 최근 6개월치 월별 통계
-                List<Object[]> rawStats = stepsRepository.findMonthlyStats(user.getId(), startDate);
+                // 🔥 이번달 1일부터 말일까지
+                LocalDate firstDayOfMonth = baseDate.withDayOfMonth(1);
+                LocalDate lastDayOfMonth = baseDate.withDayOfMonth(baseDate.lengthOfMonth());
+
+                List<Object[]> rawStats = stepsRepository.findStatsBetweenDates(user.getId(), firstDayOfMonth, lastDayOfMonth);
+                System.out.println("✅ 월간 rawStats 결과: " + rawStats);
                 return rawStats.stream()
-                        .map(obj -> {
-                            int year = ((Number) obj[0]).intValue();
-                            int month = ((Number) obj[1]).intValue();
-                            int steps = ((Number) obj[2]).intValue();
-                            String monthStr = String.format("%04d-%02d", year, month);
-                            return new MonthlyStepsStatsDto(monthStr, steps);
-                        })
+                        .map(obj -> new StepsStatsDto(
+                                (LocalDate) obj[0], // ✅ LocalDate로 캐스팅
+                                ((Number) obj[1]).intValue()
+                        ))
                         .collect(Collectors.toList());
             }
+
             default -> throw new IllegalArgumentException("range 파라미터는 daily, weekly, monthly 중 하나여야 합니다.");
         }
-
     }
-    public List<?> getStepStatsByUserId(Long userId, String range) {
+
+    public List<?> getStepStatsByUserId(Long userId, String range, String dateStr) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("사용자 없음"));
-        return getStepStats(user, range);
+
+        LocalDate baseDate = (dateStr != null)
+                ? LocalDate.parse(dateStr) // 🔥 클라이언트가 보낸 날짜 사용
+                : LocalDate.now();          // 🔥 없으면 서버 기준 오늘
+
+        return getStepStats(user, range, baseDate);
     }
+
+
+    public boolean claimPoint(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        LocalDate today = LocalDate.now();
+
+        Steps steps = stepsRepository.findByUserAndDate(user, today)
+                .orElse(null);
+
+        if (steps == null) {
+            // 오늘 걸음 수가 저장된 적 없음 → 포인트 수령 불가
+            return false;
+        }
+
+        int stepsAvailablePoints = steps.getStepCount() / 100;
+        int currentPoints = steps.getPoints();
+
+        if (currentPoints >= 100 || currentPoints >= stepsAvailablePoints) {
+            // ✅ 이미 오늘 수령 가능한 만큼 받음
+            return false;
+        }
+
+        // ✅ 포인트 1 증가
+        steps.setPoints(currentPoints + 1);
+        steps.setLastUpdated(today);
+        stepsRepository.save(steps);
+
+        return true;
+    }
+
 
 
 

@@ -10,5 +10,7 @@ import java.util.List;
 public interface PostRepositoryCustom {
     //차단한 유저의 게시글을 제외하고 검색
     Page<Post> searchPostsExcludingBlockedUsers(PostSearchCondition condition, Pageable pageable, List<Long> blockedUserIds);
+    List<Post> findTop10BestLivePostsByScore();
+    List<Post> findLegendCandidatesByScore(double threshold);
 
 }

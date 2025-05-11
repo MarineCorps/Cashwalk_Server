@@ -14,13 +14,14 @@ import java.util.Collections;
  */
 @Getter
 public class CustomUserDetails implements UserDetails {
-
+    private final User user;
     private final Long userId;
     private final String email;
     private final String password;
     private final String role;
 
     public CustomUserDetails(User user) {
+        this.user = user;
         this.userId = user.getId();
         this.email = user.getEmail();
         this.password = user.getPassword();
@@ -33,6 +34,7 @@ public class CustomUserDetails implements UserDetails {
         String fullRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
         return Collections.singletonList(new SimpleGrantedAuthority(fullRole));
     }
+
 
     @Override public String getUsername() { return email; }
     @Override public String getPassword() { return password; }

@@ -1,5 +1,6 @@
 package com.example.cashwalk.controller;
 // import 추가
+import com.example.cashwalk.entity.PostCategory;
 import com.example.cashwalk.service.CommentService;
 import com.example.cashwalk.dto.CommentResponseDto;
 import com.example.cashwalk.dto.PostResponseDto;
@@ -10,28 +11,24 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.http.ResponseEntity;
 import com.example.cashwalk.service.BookmarkService;
-import org.springframework.http.ResponseEntity;
 import java.util.Map;
 
 import com.example.cashwalk.dto.*;
 import com.example.cashwalk.entity.BoardType;
 import com.example.cashwalk.entity.Post;
-import com.example.cashwalk.security.CustomUserDetails;
 import com.example.cashwalk.service.CommunityService;
 import com.example.cashwalk.service.ViewCountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import com.example.cashwalk.security.CustomUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-
 import java.util.*;
-
+import lombok.extern.slf4j.Slf4j;
+@Slf4j
 @RestController
 @RequestMapping("/api/community")
 @RequiredArgsConstructor
@@ -48,6 +45,8 @@ public class CommunityController {
             @RequestParam(defaultValue = "latest") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String boardType,
+            @RequestParam(required = false) String postCategory,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         PostSearchCondition condition = new PostSearchCondition();
@@ -56,14 +55,29 @@ public class CommunityController {
         condition.setPage(page);
         condition.setSize(size);
 
-        Long currentUserId=userDetails.getUserId();
+        // ✅ boardType 파싱
+        if (boardType != null) {
+            try {
+                condition.setBoardType(BoardType.valueOf(boardType));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid boardType value: {}", boardType);
+            }
+        }
 
-        return communityService.searchPosts(condition,currentUserId);
+        // ✅ postCategory 파싱 (여기!)
+        if (postCategory != null) {
+            try {
+                condition.setPostCategory(PostCategory.valueOf(postCategory));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid postCategory value: {}", postCategory);
+            }
+        }
 
-        /* currentUserId가 필요한 이유:
-           우리가 "나(currentUserId)가 차단한 유저"들의 글을 보이지 않게 해야 되니까
-          👉 당연히 "지금 로그인한 사용자"가 누군지 알아야 함!*/
+        Long currentUserId = userDetails.getUserId();
+        return communityService.searchPosts(condition, currentUserId);
     }
+
+
 
 
     // 게시글 작성
@@ -73,7 +87,10 @@ public class CommunityController {
             @RequestPart(value = "imageFile", required = false) MultipartFile imageFile,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
+        log.info("💬 userId from JWT: {}", userDetails.getUserId());
+        log.info("💬 userId in requestDto BEFORE set: {}", requestDto.getUserId());
         requestDto.setUserId(userDetails.getUserId());
+        log.info("💬 userId in requestDto AFTER set: {}", requestDto.getUserId());
         PostResponseDto response = communityService.createPost(requestDto, imageFile);
         return ResponseEntity.ok(response);
     }
@@ -154,7 +171,7 @@ public class CommunityController {
     public ResponseEntity<PostReactionCountResponse> getReactionCounts(@PathVariable Long id) {
         return ResponseEntity.ok(communityService.getReactionCounts(id));
     }
-    //북마크 토클(등록/해제기능0
+    //북마크 토클(등록/해제기능)
     @PostMapping("/posts/{id}/bookmark")
     public ResponseEntity<Map<String, String>> toggleBookmark(
             @PathVariable("id") Long postId,
@@ -222,6 +239,14 @@ public class CommunityController {
         List<CommentResponseDto> comments = commentService.getMyCommentsWithReplies(userId);
         return ResponseEntity.ok(comments);
     }
+
+    // 실시간 인기글 10개 반환
+    @GetMapping("/popular")
+    public ResponseEntity<List<PostResponseDto>> getBestLivePosts() {
+        List<PostResponseDto> bestLivePosts = communityService.getBestLivePosts();
+        return ResponseEntity.ok(bestLivePosts);
+    }
+
 
 
 

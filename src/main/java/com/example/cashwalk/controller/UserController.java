@@ -2,6 +2,7 @@ package com.example.cashwalk.controller;
 
 import com.example.cashwalk.dto.BlockedUserDto;
 import com.example.cashwalk.dto.UserDto;
+import com.example.cashwalk.dto.UserProfileUpdateRequest;
 import com.example.cashwalk.security.CustomUserDetails;
 import com.example.cashwalk.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -72,5 +73,17 @@ public class UserController {
         Long blockerId = userDetails.getUserId();
         List<BlockedUserDto> blockedUsers = userService.getBlockedUsers(blockerId);
         return ResponseEntity.ok(blockedUsers);
+    }
+
+    /**
+     * ✅ 사용자 정보 입력/수정 (성별, 생일, 지역, 키, 몸무게)
+     */
+    @PatchMapping("/info")
+    public ResponseEntity<?> updateUserInfo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody UserProfileUpdateRequest request
+    ) {
+        userService.updateUserInfo(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok("사용자 정보가 업데이트되었습니다.");
     }
 }

@@ -2,6 +2,7 @@ package com.example.cashwalk.service;
 
 import com.example.cashwalk.dto.BlockedUserDto;
 import com.example.cashwalk.dto.UserDto;
+import com.example.cashwalk.dto.UserProfileUpdateRequest;
 import com.example.cashwalk.entity.User;
 import com.example.cashwalk.entity.UserBlock;
 import com.example.cashwalk.repository.UserBlockRepository;
@@ -11,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,25 +27,64 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserBlockRepository userBlockRepository;
+
     /**
      * 사용자 ID로 사용자 정보를 조회한 후 DTO로 변환하여 반환
-     * DTO란 데이터 전송 객체
-     * 프로세스 간에 데이터를 전달하는 객체
-     * @param userId 사용자 ID
-     * @return UserDto 사용자 정보
      */
     public UserDto getUserInfo(Long userId) {
-        // 사용자 ID로 DB에서 조회
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("해당 사용자를 찾을 수 없습니다."));
-
-        // Entity → DTO 변환 후 반환
         return UserDto.from(user);
     }
+
     public User findById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
     }
+
+    /**
+     * ✅ 사용자 정보(성별, 생일, 지역, 키, 몸무게) 업데이트 + 최초 로그인 처리
+     */
+    @Transactional
+    public void updateUserInfo(Long userId, UserProfileUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
+
+        // ✅ 닉네임이 들어오면 업데이트
+        if (request.getNickname() != null && !request.getNickname().isBlank()) {
+            user.setNickname(request.getNickname());
+        }
+
+        // ✅ 성별 업데이트
+        if (request.getGender() != null && !request.getGender().isBlank()) {
+            user.setGender(request.getGender());
+        }
+
+        // ✅ 생일 문자열이 들어오면 LocalDate로 파싱해서 저장
+        if (request.getBirthDate() != null && !request.getBirthDate().isBlank()) {
+            user.setBirthDate(LocalDate.parse(request.getBirthDate()));
+        }
+
+        // ✅ 지역
+        if (request.getRegion() != null && !request.getRegion().isBlank()) {
+            user.setRegion(request.getRegion());
+        }
+
+        // ✅ 키와 몸무게
+        if (request.getHeight() != null) {
+            user.setHeight(request.getHeight());
+        }
+
+        if (request.getWeight() != null) {
+            user.setWeight(request.getWeight());
+        }
+
+        // ✅ 키와 몸무게가 모두 채워졌다면 firstLoginCompleted = true
+        if (user.getHeight() != null && user.getWeight() != null) {
+            user.setFirstLoginCompleted(true);
+        }
+    }
+
 
     /**
      * 다른 유저를 차단

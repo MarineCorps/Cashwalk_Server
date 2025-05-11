@@ -39,4 +39,14 @@ public class Points {
 
     @Column(name="description")
     private String description; //추천 보상 설명용
+
+    // 📁 Points.java
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "park_id") // Points 테이블에 park_id 외래키 생성됨
+    private Park park;
+
+
+    @Column(name="park_name")
+    private String parkName;
 }

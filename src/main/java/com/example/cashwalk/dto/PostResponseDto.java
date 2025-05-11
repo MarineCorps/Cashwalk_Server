@@ -24,6 +24,7 @@ public class PostResponseDto {
     private int likeCount;
     private int commentCount;
     private int views;
+    private int bookmarkCount;
 
     public static PostResponseDto from(Post post, String nickname, int likeCount, int commentCount) {
         return PostResponseDto.builder()
@@ -37,6 +38,7 @@ public class PostResponseDto {
                 .likeCount(likeCount)
                 .commentCount(commentCount)
                 .views(post.getViews())
+                .bookmarkCount(post.getBookmarkCount())
                 .build();
     }
 
@@ -52,6 +54,7 @@ public class PostResponseDto {
                 .likeCount(((Number) row[7]).intValue())
                 .commentCount(((Number) row[8]).intValue())
                 .views(((Number) row[9]).intValue())
+                .bookmarkCount(((Number) row[10]).intValue())
                 .build();
     }
 

@@ -7,4 +7,5 @@ import lombok.Setter;
 @Setter
 public class CommentRequestDto {
     private String content; // 댓글 내용
+    private Long parentId;
 }

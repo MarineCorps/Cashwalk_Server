@@ -34,7 +34,9 @@ public class CommentReaction {
     private User user;
 
     private LocalDateTime createdAt;
-    protected void onCreate(){
+    @PrePersist
+    protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
 }

@@ -72,7 +72,7 @@ public class StoreService {
         Points pointUse = Points.builder()
                 .user(user)
                 .amount(-item.getRequiredPoints()) // 포인트 차감은 음수
-                .type(PointsType.ITEM_PURCHASE)
+                .type(PointsType.STORE_USE)
                 .createdAt(LocalDateTime.now())
                 .build();
 

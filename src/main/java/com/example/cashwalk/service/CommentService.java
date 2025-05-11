@@ -37,45 +37,68 @@ public class CommentService {
     private final CommentReactionRepository commentReactionRepository;
     private final UserBlockRepository userBlockRepository;
 
-    //댓글 작성
+    // 댓글 작성
     @Transactional
-    public CommentResponseDto createComment(Long postId, Long userId, String content) {
+    public CommentResponseDto createComment(Long postId, Long userId, String content, Long parentId) {
+        // 게시글 존재 확인
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException("게시글이 존재하지 않습니다."));
 
+        // 사용자 존재 확인
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("사용자가 존재하지 않습니다."));
 
+        // 대댓글인 경우 → 부모 댓글 조회
+        Comment parentComment = null;
+        if (parentId != null) {
+            parentComment = commentRepository.findById(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("부모 댓글이 존재하지 않습니다."));
+        }
+
+        // 댓글 생성 (부모가 null이면 일반 댓글, 아니면 대댓글)
         Comment comment = Comment.builder()
                 .post(post)
                 .user(user)
                 .content(content)
+                .parent(parentComment)  // ✅ 여기 주목
                 .build();
 
         Comment saved = commentRepository.save(comment);
 
-        // ✅ 댓글 수 증가
+        // 댓글 수 증가
         post.setCommentCount(post.getCommentCount() + 1);
         postRepository.save(post);
 
+        // 좋아요/비추천 수 계산
+        long likeCount = commentReactionRepository.countByCommentAndStatus(saved, CommentReaction.Status.LIKE);
+        long dislikeCount = commentReactionRepository.countByCommentAndStatus(saved, CommentReaction.Status.DISLIKE);
+
+        // DTO 반환
         return CommentResponseDto.builder()
                 .id(saved.getId())
-                .userId(saved.getUser().getId())
+                .userId(user.getId())
+                .nickname(user.getNickname())
                 .content(saved.getContent())
                 .createdAt(saved.getCreatedAt())
+                .likeCount((int) likeCount)
+                .dislikeCount((int) dislikeCount)
+                .likedByMe(false)
+                .dislikedByMe(false)
+                .parentId(parentId)  // ✅ parentId 포함
                 .build();
     }
 
 
-    //댓글 목록 조회
+
+
     public List<CommentResponseDto> getCommentsByPost(Long postId){
         Post post = postRepository.findById(postId)
-                .orElseThrow(()->new PostNotFoundException("게시글이 존재하지 않습니다."));
+                .orElseThrow(() -> new PostNotFoundException("게시글이 존재하지 않습니다."));
 
-        List<Comment> comments=commentRepository.findByPostOrderByCreatedAtDesc(post);
+        List<Comment> comments = commentRepository.findByPostOrderByCreatedAtDesc(post);
 
         return comments.stream()
-                .map(c ->CommentResponseDto.builder()
+                .map(c -> CommentResponseDto.builder()
                         .id(c.getId())
                         .userId(c.getUser().getId())
                         .content(c.getContent())
@@ -83,6 +106,7 @@ public class CommentService {
                         .build()
                 ).collect(Collectors.toList());
     }
+
     //댓글 수정
     public CommentResponseDto updateComment(Long commentId, Long userId, String content) {
         Comment comment = commentRepository.findById(commentId)
@@ -102,7 +126,7 @@ public class CommentService {
                 .createdAt(updated.getCreatedAt())
                 .build();
     }
-    //댓글 삭제
+    // 댓글 삭제
     @Transactional
     public void deleteComment(Long commentId, Long userId) {
         Comment comment = commentRepository.findById(commentId)
@@ -120,9 +144,11 @@ public class CommentService {
         postRepository.save(post);
     }
 
+
     //추천
     @Transactional
     public void likeComment(Long commentId, Long userId) {
+        System.out.println("✅ [Service] likeComment 호출됨 - commentId: " + commentId + ", userId: " + userId);
         Comment comment =commentRepository.findById(commentId)
                 .orElseThrow(()->new CommentNotFoundException("댓글이 존재하지 않습니다."));
 
@@ -133,14 +159,18 @@ public class CommentService {
 
         if(existing.isPresent()){
             CommentReaction reaction=existing.get();
+            System.out.println("➡️ 기존 반응 존재: " + reaction.getStatus());
             if(reaction.getStatus()==CommentReaction.Status.LIKE){
+                System.out.println("🗑️ 기존 좋아요 삭제");
                 commentReactionRepository.delete(reaction); // 👍 → 취소
             }
             else{
+                System.out.println("🔄 비추천 → 좋아요 전환");
                 reaction.setStatus(CommentReaction.Status.LIKE); // 👎 → 👍 전환
             }
         }
         else{
+            System.out.println("➕ 좋아요 새로 생성");
             CommentReaction newReaction=CommentReaction.builder()
                     .user(user)
                     .comment(comment)
@@ -191,58 +221,58 @@ public class CommentService {
         result.put("dislikeCount", dislikeCount);
         return result;
     }
-    // 내가 작성한 댓글 목록 조회
     @Transactional(readOnly = true)
     public List<CommentResponseDto> getMyComments(Long userId) {
+        // 🔍 사용자 유효성 확인
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
+        // 📥 내가 작성한 댓글 전체 조회 (최신순)
         List<Comment> comments = commentRepository.findAllByUserOrderByCreatedAtDesc(user);
 
+        // 🔁 DTO 변환 (내가 작성한 댓글이므로 isMine은 무조건 true)
         return comments.stream()
-                .map(CommentResponseDto::from)
-                .toList();
+                .map(comment -> CommentResponseDto.from(comment, userId))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<CommentResponseDto> getMyCommentsWithReplies(Long userId) {
+        // 📥 내가 작성한 댓글 + 해당 댓글에 달린 대댓글 조회
         List<Comment> comments = commentRepository.findMyCommentsWithReplies(userId);
 
+        // 🔁 DTO 변환 (내가 작성한 댓글이므로 isMine은 true)
         return comments.stream()
-                .map(CommentResponseDto::from)
-                .toList();
+                .map(comment -> CommentResponseDto.from(comment, userId))
+                .collect(Collectors.toList());
     }
 
     /**
-     * 게시글의 댓글 목록을 조회하며,
-     * 로그인한 사용자가 차단한 유저의 댓글은 제외한다.
+     * ✅ 특정 게시글의 댓글 목록 조회
+     * - 차단한 유저의 댓글/대댓글은 필터링함
+     * - 로그인한 사용자의 좋아요/싫어요/작성 여부를 반영함
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public List<CommentResponseDto> getCommentsByPostId(Long postId, Long currentUserId) {
-        // ✅ 내가 차단한 유저 ID 리스트 조회
+        // 🔍 로그인한 사용자가 차단한 유저 ID 목록 조회
         List<Long> blockedUserIds = userBlockRepository.findBlockedUserIdsByBlockerId(currentUserId);
 
-        // ✅ 게시글 조회
+        // 🔍 게시글 존재 여부 확인
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
 
-        // ✅ 댓글 조회 (최신순)
+        // 📥 해당 게시글의 모든 댓글 조회 (최신순)
         List<Comment> comments = commentRepository.findByPostOrderByCreatedAtDesc(post);
 
-        // ✅ 차단 유저의 댓글 제외 후 DTO 변환
         return comments.stream()
-                .filter(comment -> !blockedUserIds.contains(comment.getUser().getId()))
-                .filter(comment -> comment.getParent() == null || !blockedUserIds.contains(comment.getParent().getUser().getId()))
-                .map(CommentResponseDto::from)
+                // 🔒 차단한 유저가 작성한 댓글은 제외
+                .filter(c -> !blockedUserIds.contains(c.getUser().getId()))
+                // 🔒 대댓글일 경우, 부모 댓글 작성자도 차단 유저면 제외
+                .filter(c -> c.getParent() == null || !blockedUserIds.contains(c.getParent().getUser().getId()))
+                // 🔁 DTO 변환 (좋아요, isMine, parentId 등 포함)
+                .map(c -> CommentResponseDto.from(c, currentUserId))
                 .collect(Collectors.toList());
-
     }
-
-
-
-
-
-
 
 
 //.stream().map().collect()	댓글 리스트를 DTO 리스트로 변환 (Java Stream API)

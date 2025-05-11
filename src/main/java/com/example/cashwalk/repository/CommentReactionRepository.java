@@ -11,6 +11,6 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
     Optional<CommentReaction> findByUserAndComment(User user, Comment comment);
 
     //추천/비추천 개수 조회용
-    int countByCommentAndStatus(Comment comment, CommentReaction.Status statuc);
+    int countByCommentAndStatus(Comment comment, CommentReaction.Status status);
 
 }

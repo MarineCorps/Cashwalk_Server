@@ -56,16 +56,33 @@ public class StepsController {
     @GetMapping("/stats")
     public ResponseEntity<?> getStepStats(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(name = "range", defaultValue = "weekly") String range
+            @RequestParam(name = "range", defaultValue = "weekly") String range,
+            @RequestParam(name = "date", required = false) String dateStr // ✅ 추가
     ) {
         try {
-            Long userId = userDetails.getUserId(); // Long으로 userId 추출
-            List<?> stats = stepsService.getStepStatsByUserId(userId, range); // 메서드 분기
+            Long userId = userDetails.getUserId();
+            List<?> stats = stepsService.getStepStatsByUserId(userId, range, dateStr);
             return ResponseEntity.ok(stats);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+
+    // StepsController.java
+    @PostMapping("/claim")
+    public ResponseEntity<?> claimPoint(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        boolean success = stepsService.claimPoint(userDetails.getUserId());
+
+        if (success) {
+            return ResponseEntity.ok("포인트 1 적립 완료");
+        } else {
+            return ResponseEntity.badRequest().body("오늘은 이미 최대 100포인트를 적립했습니다.");
+        }
+    }
+
 
 
 

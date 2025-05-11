@@ -21,4 +21,8 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
     //  특정 사용자 기준 북마크 삭제 (회원 탈퇴 시 cascade용)
     void deleteAllByUser(User user);
+
+    // BookmarkRepository.java
+    boolean existsByUserIdAndPostId(Long userId, Long postId);
+
 }

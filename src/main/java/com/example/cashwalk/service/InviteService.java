@@ -1,5 +1,5 @@
 package com.example.cashwalk.service;
-
+import com.example.cashwalk.dto.InviteStatsDto;
 import com.example.cashwalk.dto.InviteDto;
 import com.example.cashwalk.entity.Invite;
 import com.example.cashwalk.entity.User;
@@ -84,4 +84,29 @@ public class InviteService {
     private String generateInviteCode() {
         return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
+
+    public InviteStatsDto getInviteStats(User me) {
+        // 내가 초대한 사람 수
+        int invitedCount = (int) inviteRepository.findAll().stream()
+                .filter(i -> i.getReferrer().getId().equals(me.getId()) && i.getInvitee() != null)
+                .count();
+
+        // 나를 초대한 사람이 존재하는지 (있다면 1명)
+        int invitedMeCount = (int) inviteRepository.findAll().stream()
+                .filter(i -> i.getInvitee() != null && i.getInvitee().getId().equals(me.getId()))
+                .count();
+
+        int totalCash = invitedCount * 3000;
+
+        return InviteStatsDto.builder()
+                .inviteCode(me.getInviteCode())
+                .invitedCount(invitedCount)
+                .invitedMeCount(invitedMeCount)
+                .totalCash(totalCash)
+                .build();
+    }
+
+
 }
+
+

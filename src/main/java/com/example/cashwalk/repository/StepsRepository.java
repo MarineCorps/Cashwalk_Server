@@ -38,21 +38,13 @@ public interface StepsRepository extends JpaRepository<Steps, Long> {
     List<Object[]> findStatsSinceDate(@Param("userId") Long userId,
                                       @Param("startDate") LocalDate startDate);
 
-    // ✅ 월간 통계 조회용 쿼리
-    @Query(
-            value = """
-        SELECT 
-            YEAR(s.date) AS year,
-            MONTH(s.date) AS month,
-            SUM(s.steps) AS total_steps
-        FROM steps s
-        WHERE s.user_id = :userId
-          AND s.date >= :startDate
-        GROUP BY year, month
-        ORDER BY year, month
-        """,
-            nativeQuery = true
-    )
-    List<Object[]> findMonthlyStats(@Param("userId") Long userId,
-                                    @Param("startDate") LocalDate startDate);
+    @Query("""
+        SELECT s.date, SUM(s.stepCount)
+        FROM Steps s
+        WHERE s.user.id = :userId AND s.date BETWEEN :startDate AND :endDate
+        GROUP BY s.date
+        ORDER BY s.date
+        """)
+    List<Object[]> findStatsBetweenDates(Long userId, LocalDate startDate, LocalDate endDate);
+
 }

@@ -41,18 +41,20 @@ public class JwtTokenProvider {
     /**
      * ✅ 사용자 이메일 + 역할 기반으로 JWT 토큰 생성 (오버로딩)
      */
-    public String createToken(String email, String role) {
+    public String createToken(String email, String role, Long userId) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMillis);
 
         return Jwts.builder()
                 .setSubject(email)
-                .claim("role", role) // ✅ role 클레임 추가
+                .claim("role", role)          // 기존: 역할
+                .claim("userId", userId)      // ✅ 추가: 사용자 ID
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(key)
                 .compact();
     }
+
 
 
     /**

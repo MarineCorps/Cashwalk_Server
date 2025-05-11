@@ -1,5 +1,5 @@
 package com.example.cashwalk.dto;
-
+import com.example.cashwalk.entity.PostCategory;
 import com.example.cashwalk.entity.BoardType;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,4 +15,5 @@ public class PostSearchCondition {
     private int page = 0;           // 페이지 번호
     private int size = 10;          // 페이지 크기
     private BoardType boardType;    // 게시판 종류 필터링 (GENERAL, BESTLIVE, LEGEND 등)
+    private PostCategory postCategory;
 }

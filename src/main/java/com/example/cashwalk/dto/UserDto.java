@@ -19,7 +19,7 @@ public class UserDto {
     private String email;    // 이메일
     private String nickname; // 닉네임
     private int points;      // 포인트 잔액 ✅ 추가됨
-
+    String inviteCode;
     /**
      * ✅ User 엔티티 → UserDto 변환 정적 메서드
      */
@@ -28,7 +28,8 @@ public class UserDto {
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                user.getPoints()
+                user.getPoints(),
+                user.getInviteCode()
         );
     }
 }

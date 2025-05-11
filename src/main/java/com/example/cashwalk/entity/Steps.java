@@ -49,7 +49,7 @@ public class Steps {
     //이 필드는 DB테이블의 steps라는 칼럼으로 저장됨
     // null허용안함
     @Column(name = "steps", nullable = false)
-    private int steps;
+    private int stepCount;
 
     /**
      * 오늘까지 적립된 포인트

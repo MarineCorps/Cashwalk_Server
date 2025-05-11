@@ -15,8 +15,9 @@ POST 요청으로 추천 코드 적용
 
 @RequestParam으로 쿼리 파라미터 code 받음*/
 package com.example.cashwalk.controller;
-
+import com.example.cashwalk.dto.InviteStatsDto;
 import com.example.cashwalk.dto.InviteDto;
+import com.example.cashwalk.entity.User;
 import com.example.cashwalk.security.CustomUserDetails;
 import com.example.cashwalk.service.InviteService;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,13 @@ public class InviteController {
             @RequestParam String code){
         Long userId=userDetails.getUserId();
         InviteDto dto=inviteService.applyInviteCode(userId,code);
+        return ResponseEntity.ok(dto);
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<InviteStatsDto> getInviteStats(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        User me = userDetails.getUser();
+        InviteStatsDto dto = inviteService.getInviteStats(me);
         return ResponseEntity.ok(dto);
     }
 

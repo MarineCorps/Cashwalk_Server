@@ -1,8 +1,9 @@
 package com.example.cashwalk.controller;
 
 import com.example.cashwalk.dto.AuthRequest;
-import com.example.cashwalk.service.AuthService;
 import com.example.cashwalk.dto.AuthIdTokenRequest;
+import com.example.cashwalk.dto.AuthResponse;
+import com.example.cashwalk.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,29 +18,36 @@ public class AuthController {
     private AuthService authService;
 
     /**
-     * 회원가입 API 엔드포인트
-     * @param request 회원가입 요청 데이터 (이메일 & 비밀번호)
-     * @return 회원가입 결과 메시지
+     * ✅ 회원가입
      */
-    //JSON데이터를 자바 객체로 변환
-    //서비스 로직(AuthService)호출
     @PostMapping("/register")
     public String register(@RequestBody AuthRequest request) {
         return authService.register(request);
     }
+
+    /**
+     * ✅ 일반 로그인 (이메일+비밀번호)
+     */
     @PostMapping("/login")
     public String login(@RequestBody AuthRequest request) {
         return authService.login(request);
     }
+
+    /**
+     * ✅ 구글 로그인
+     * Flutter에서 받은 idToken을 기반으로 로그인
+     */
     @PostMapping("/google")
-    public String googleLogin(@RequestBody AuthIdTokenRequest request) {
+    public AuthResponse googleLogin(@RequestBody AuthIdTokenRequest request) {
         return authService.googleLogin(request.getIdToken());
     }
+
+    /**
+     * ✅ 카카오 로그인
+     * Flutter에서 받은 accessToken을 기반으로 로그인
+     */
     @PostMapping("/kakao")
-    public String kakaoLogin(@RequestBody String accessToken) {
+    public AuthResponse kakaoLogin(@RequestBody String accessToken) {
         return authService.kakaoLogin(accessToken);
     }
-
-
-
 }

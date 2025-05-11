@@ -31,7 +31,7 @@ public class Comment {
     @Column(nullable = false, length = 500)
     private String content;
 
-    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<CommentReaction> reactions = new ArrayList<>();
 
     @Column(name = "created_at")
@@ -41,6 +41,11 @@ public class Comment {
     @JoinColumn(name = "parent_id")
     private Comment parent;
 
+    //하나의 부모댓글은 여러개의 대댓글을 가질 수있음 1:N
+    //mappedBy="parent"라는 뜻은 parent필드가 연관관계의 주인이고, 외래키는 그쪽이 관리한다는뜻
+    // cascade, orphanRemoval은 부모댓글을 삭제하면 자식 대댓글 다 삭제
+    @OneToMany(mappedBy = "parent", cascade=CascadeType.REMOVE,orphanRemoval = true)
+    private List<Comment> replies=new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

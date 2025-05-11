@@ -1,22 +1,22 @@
 package com.example.cashwalk.repository;
 
 import com.example.cashwalk.dto.PostSearchCondition;
-import com.example.cashwalk.entity.Post;
-import com.example.cashwalk.entity.QPost;
-import com.example.cashwalk.entity.QUser;
+import com.example.cashwalk.entity.*;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQuery;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class PostRepositoryImpl implements PostRepositoryCustom {
@@ -24,15 +24,15 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     /**
-     * 차단 유저의 게시글 제외 + 검색 + 정렬 처리된 게시글 목록 조회
+     * 🔍 게시글 검색 (차단 유저 제외 + 정렬 + 필터)
      */
     @Override
     public Page<Post> searchPostsExcludingBlockedUsers(PostSearchCondition condition, Pageable pageable, List<Long> blockedUserIds) {
         QPost post = QPost.post;
         QUser user = QUser.user;
 
-        // 🔍 검색 조건 처리
         BooleanBuilder builder = new BooleanBuilder();
+
         if (condition.getKeyword() != null && !condition.getKeyword().isBlank()) {
             String keyword = condition.getKeyword();
             builder.and(
@@ -42,52 +42,99 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
             );
         }
 
-        // 🔍 게시판 타입 필터링 (optional)
         if (condition.getBoardType() != null) {
             builder.and(post.boardType.eq(condition.getBoardType()));
         }
 
-        // 🚫 차단한 유저의 게시글 제외
+        if (condition.getPostCategory() != null) {
+            builder.and(post.postCategory.eq(condition.getPostCategory()));
+        }
+
         if (blockedUserIds != null && !blockedUserIds.isEmpty()) {
             builder.and(post.user.id.notIn(blockedUserIds));
         }
 
-        // 🔃 정렬 기준 지정
-        OrderSpecifier<?> order = getOrderSpecifier(condition.getSort());
-
-        // 📦 실제 쿼리 실행
         JPAQuery<Post> query = queryFactory
                 .selectFrom(post)
                 .join(post.user, user).fetchJoin()
                 .where(builder)
-                .orderBy(order)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize());
 
+        // LEGEND는 북마크 점수 기반 정렬 (likeCount 제거됨)
+        if (condition.getPostCategory() == PostCategory.LEGEND) {
+            query.orderBy(Expressions.numberTemplate(Double.class,
+                    "({0} * 6 + {1} * 3 + {2} * 1)",
+                    post.bookmarkCount, post.commentCount, post.views
+            ).desc());
+        } else {
+            query.orderBy(getOrderSpecifier(condition.getSort()));
+        }
+
         List<Post> results = query.fetch();
 
-        // 전체 개수 쿼리
-        long total = queryFactory
+        Long total = queryFactory
                 .select(post.count())
                 .from(post)
                 .where(builder)
                 .fetchOne();
 
-        return new PageImpl<>(results, pageable, total == 0 ? 0 : total);
+        return new PageImpl<>(results, pageable, total != null ? total : 0L);
     }
 
-    /**
-     * 게시글 정렬 기준 지정 (좋아요순 / 댓글순 / 조회수순 / 최신순)
-     */
     private OrderSpecifier<?> getOrderSpecifier(String sort) {
         QPost post = QPost.post;
-        PathBuilder<Post> pathBuilder = new PathBuilder<>(Post.class, "post");
 
         return switch (sort) {
-            case "like" -> post.likeCount.desc();
             case "comment" -> post.commentCount.desc();
             case "views" -> post.views.desc();
             default -> post.createdAt.desc(); // 최신순
         };
+    }
+
+    /**
+     * 🔥 실시간 인기글 (24시간 내 상위 10개)
+     */
+    @Override
+    public List<Post> findTop10BestLivePostsByScore() {
+        QPost post = QPost.post;
+        QPostLike like = QPostLike.postLike;
+
+        return queryFactory
+                .select(post)
+                .from(post)
+                .leftJoin(like).on(like.post.eq(post).and(like.status.eq(PostLike.Status.LIKE)))
+                .where(post.createdAt.goe(LocalDateTime.now().minusHours(24)))
+                .groupBy(post)
+                .orderBy(
+                        Expressions.numberTemplate(Double.class,
+                                "(COUNT({0}) * 5 + {1} * 3 + {2}) / POWER(TIMESTAMPDIFF(HOUR, {3}, NOW()) + 2, 1.5)",
+                                like.id, post.commentCount, post.views, post.createdAt
+                        ).desc()
+                )
+                .limit(10)
+                .fetch();
+    }
+
+    /**
+     * 👑 명예의 전당 후보 (점수 기준)
+     */
+    @Override
+    public List<Post> findLegendCandidatesByScore(double threshold) {
+        QPost post = QPost.post;
+        QPostLike like = QPostLike.postLike;
+
+        return queryFactory
+                .select(post)
+                .from(post)
+                .leftJoin(like).on(like.post.eq(post).and(like.status.eq(PostLike.Status.LIKE)))
+                .groupBy(post)
+                .having(
+                        Expressions.numberTemplate(Double.class,
+                                "(COUNT({0}) * 6 + {1} * 3 + {2})",
+                                like.id, post.commentCount, post.views
+                        ).goe(threshold)
+                )
+                .fetch();
     }
 }

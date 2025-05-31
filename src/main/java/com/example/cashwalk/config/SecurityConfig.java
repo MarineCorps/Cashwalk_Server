@@ -121,7 +121,7 @@ public class SecurityConfig {
                         //친구한테 복권선물
                         .requestMatchers("/api/gift/**").authenticated()
                         .requestMatchers("/api/lucky-cash/**").authenticated()
-
+                        .requestMatchers("api/running/**").authenticated()
                         //  [관리자 전용 API]
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         //친구목록 관련

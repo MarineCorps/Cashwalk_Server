@@ -7,7 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
-
+import com.google.firebase.messaging.*;
+import lombok.extern.slf4j.Slf4j;
 @Service // 비즈니스 로직 처리용 서비스 클래스
 @RequiredArgsConstructor
 @Slf4j
@@ -37,6 +38,26 @@ public class PushService {
                 // 다른 유저가 등록한 토큰이라면 무시 또는 로깅
                 log.warn("❗ 이미 다른 유저에 의해 등록된 디바이스 토큰입니다. 무시됨. token={}, userId={}", token, user.getId());
             }
+        }
+    }
+
+    public void sendPush(String targetToken, String title, String body) {
+        try {
+            Notification notification = Notification.builder()
+                    .setTitle(title)
+                    .setBody(body)
+                    .build();
+
+            Message message = Message.builder()
+                    .setToken(targetToken)
+                    .setNotification(notification)
+                    .build();
+
+            String response = FirebaseMessaging.getInstance().send(message);
+            log.info("✅ FCM 푸시 전송 성공: {}", response);
+
+        } catch (FirebaseMessagingException e) {
+            log.error("❌ FCM 푸시 전송 실패", e);
         }
     }
 

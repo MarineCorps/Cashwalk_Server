@@ -61,7 +61,7 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize());
 
-        // LEGEND는 북마크 점수 기반 정렬 (likeCount 제거됨)
+        // LEGEND는 점수 기반 정렬
         if (condition.getPostCategory() == PostCategory.LEGEND) {
             query.orderBy(Expressions.numberTemplate(Double.class,
                     "({0} * 6 + {1} * 3 + {2} * 1)",

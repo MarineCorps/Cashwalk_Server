@@ -15,11 +15,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor  // 기본 생성자 자동 생성
 public class UserDto {
 
-    private Long id;         // 사용자 ID
-    private String email;    // 이메일
-    private String nickname; // 닉네임
-    private int points;      // 포인트 잔액 ✅ 추가됨
-    String inviteCode;
+    private Long id;
+    private String email;
+    private String nickname;
+    private int points;
+    private String inviteCode;
+    private Integer height;
+    private Integer weight;
+    private String region;
+    private String gender;
+    private String birthDate;
+    private String profileImage;
+
     /**
      * ✅ User 엔티티 → UserDto 변환 정적 메서드
      */
@@ -29,7 +36,14 @@ public class UserDto {
                 user.getEmail(),
                 user.getNickname(),
                 user.getPoints(),
-                user.getInviteCode()
+                user.getInviteCode(),
+                user.getHeight(),
+                user.getWeight(),
+                user.getRegion(),
+                user.getGender(),
+                user.getBirthDate() != null ? user.getBirthDate().toString() : null,
+                user.getProfileImage()
         );
+
     }
 }

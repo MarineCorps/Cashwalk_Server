@@ -1,5 +1,6 @@
 package com.example.cashwalk.controller;
 
+import com.example.cashwalk.dto.PushNotificationDto;
 import com.example.cashwalk.service.PushService;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
+
 @Slf4j
 @RestController // REST API용 컨트롤러
 @RequestMapping("/api/push") // /api/push 경로로 들어오는 요청 처리
@@ -34,4 +38,14 @@ public class PushController {
         public String getToken() { return token; }
         public void setToken(String token) { this.token = token; }
     }
+    @PostMapping("/test")
+    public ResponseEntity<?> sendTestPush(@RequestBody PushNotificationDto dto) {
+        pushService.sendPush(dto.getToken(), dto.getTitle(), dto.getBody());
+
+        return ResponseEntity.ok(Map.of(
+                "status", 200,
+                "message", "테스트 푸시 발송 완료"
+        ));
+    }
+
 }

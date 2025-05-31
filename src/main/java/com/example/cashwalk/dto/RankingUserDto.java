@@ -1,5 +1,6 @@
 package com.example.cashwalk.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -8,7 +9,9 @@ import lombok.Data;
 public class RankingUserDto {
     private Long userId;
     private String nickname;
-    private String profileImageUrl;
+    private String profileImage;
     private int steps;
-    private boolean isMe;  // 나인지 여부 표시
+    @JsonProperty("isMe")
+    private boolean isMe;
+    // 나인지 여부 표시
 }

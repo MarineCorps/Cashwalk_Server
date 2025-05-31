@@ -25,6 +25,7 @@ import com.example.cashwalk.repository.*;
 import org.springframework.http.HttpStatus;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -253,6 +254,25 @@ public class ChatController {
         ));
 
     }
+
+    @GetMapping("/lucky-friends")
+    public ResponseEntity<List<UserDto>> getLuckyFriends() {
+        List<User> allUsers = userRepository.findByRole("USER");
+
+        // 랜덤 섞기 + 최대 5명 제한
+        Collections.shuffle(allUsers);
+        List<User> selected = allUsers.stream()
+                .limit(5)
+                .collect(Collectors.toList());
+
+        List<UserDto> result = selected.stream()
+                .map(UserDto::from)
+                .toList();
+
+        return ResponseEntity.ok(result);
+    }
+
+
 
 
 

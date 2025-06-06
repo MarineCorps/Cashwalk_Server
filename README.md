@@ -11,7 +11,6 @@
   <br>
   <img src="https://img.shields.io/badge/Java-007396?style=flat&logo=openjdk&logoColor=white" />
   <img src="https://img.shields.io/badge/SpringBoot-6DB33F?style=flat&logo=springboot&logoColor=white" />
-  <img src="https://img.shields.io/badge/SpringSecurity-6DB33F?style=flat&logo=springsecurity&logoColor=white" />
   <img src="https://img.shields.io/badge/JPA-007396?style=flat" />
   <img src="https://img.shields.io/badge/QueryDSL-000000?style=flat" />
   <br>
@@ -105,20 +104,14 @@ com.example.cashwalk
 | 인증/유저 API     | [auth_user_api.md](./API/auth_user_api.md)     |
 | 커뮤니티 API      | [community_api.md](./API/community_api.md)     |
 | 캐시톡/랭킹 API    | [cashtalk_api.md](./API/cashtalk_api.md)       |
-| 산책 리워드 API    | [walkreward_api.md](./API/walkreward_api.md)   |
+| 동네산책 API    | [walkreward_api.md](./API/walkreward_api.md)   |
 | 러닝크루 API      | [runningcrew_api.md](./API/runningcrew_api.md) |
-
----
-
-## 📊 데이터베이스 ERD
-
-<img src="./docs/assets/erd.png" width="700"/>
 
 ---
 
 ## 🖼 시스템 아키텍처
 
-<img src="./docs/assets/architecture.png" width="700"/>
+<img src="./img/cashwalk_architecture.png" width="700"/>
 
 ## ☁ 배포 환경
 

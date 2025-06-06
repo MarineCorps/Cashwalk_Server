@@ -2,8 +2,26 @@
 
 <!-- logo -->
 # CashWalk Back-end Repository 
+<div align="center">
+  <h1>💰 캐시워크 백엔드 서버 (Spring Boot)</h1>
+  <p>실시간 채팅, 포인트 적립, 러닝 기록, 커뮤니티 등 다양한 기능을 포함한 통합형 백엔드 시스템</p>
 
-[<img src="https://img.shields.io/badge/-readme.md-important?style=flat&logo=google-chrome&logoColor=white" />]() [<img src="https://img.shields.io/badge/-tech blog-blue?style=flat&logo=google-chrome&logoColor=white" />]() [<img src="https://img.shields.io/badge/release-v1.0.0-yellow?style=flat&logo=google-chrome&logoColor=white" />]() <br/> [<img src="https://img.shields.io/badge/프로젝트 기간-2025.03~2025.06-green?style=flat&logo=&logoColor=white" />]()
+  [<img src="https://img.shields.io/badge/-readme.md-important?style=flat&logo=google-chrome&logoColor=white" />]()
+  [<img src="https://img.shields.io/badge/프로젝트 기간-2025.03~2025.06-green?style=flat&logo=&logoColor=white" />]()
+  <br>
+  <img src="https://img.shields.io/badge/Java-007396?style=flat&logo=openjdk&logoColor=white" />
+  <img src="https://img.shields.io/badge/SpringBoot-6DB33F?style=flat&logo=springboot&logoColor=white" />
+  <img src="https://img.shields.io/badge/SpringSecurity-6DB33F?style=flat&logo=springsecurity&logoColor=white" />
+  <img src="https://img.shields.io/badge/JPA-007396?style=flat" />
+  <img src="https://img.shields.io/badge/QueryDSL-000000?style=flat" />
+  <br>
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white" />
+  <img src="https://img.shields.io/badge/WebSocket-FF6F00?style=flat" />
+  <img src="https://img.shields.io/badge/Firebase-FFCA28?style=flat&logo=firebase&logoColor=white" />
+  <img src="https://img.shields.io/badge/JWT-black?style=flat&logo=jsonwebtokens&logoColor=white" />
+  <img src="https://img.shields.io/badge/AWS EC2-FF9900?style=flat&logo=amazonaws&logoColor=white" />
+  <img src="https://img.shields.io/badge/SSH-000000?style=flat&logo=gnubash&logoColor=white" />
+</div>
 
 </div>
 

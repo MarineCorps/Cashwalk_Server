@@ -3,9 +3,9 @@
 <p><i>Arduino 기반 걸음 패턴 분석 기능 탑재</i></p>
 <!-- logo -->
 <div align="center">
-  <h1>💰 캐시워크 백엔드 서버 (Spring Boot)</h1>
-  
+  <h1>💰 제돈워크 백엔드 서버 (Spring Boot)</h1>
   <p>실시간 채팅, 포인트 적립, 러닝 기록, 커뮤니티,아두이노를 통한 걸음패턴 분석 등 다양한 기능을 포함한 통합형 백엔드 시스템</p>
+  <P>-> 캐시워크를 모티브로한 앱입니다.</P>
 
   [<img src="https://img.shields.io/badge/-readme.md-important?style=flat&logo=google-chrome&logoColor=white" />]()
   [<img src="https://img.shields.io/badge/프로젝트 기간-2025.03~2025.06-green?style=flat&logo=&logoColor=white" />]()
@@ -25,9 +25,8 @@
 
 </div>
 
-# 🏃‍♂️ CashWalk Server (Spring Boot)
+# 🏃‍♂️
 > “**걷기만 해도 돈을 벌고, 건강해진다!**”
-> Flutter 기반 CashWalk 클론 앱의 백엔드 서버입니다.
 > **걸음 수 적립, 공원 리워드, 커뮤니티, 실시간 채팅, 러닝 기록**을 통합한 건강 리워드 플랫폼입니다.
 
 ---

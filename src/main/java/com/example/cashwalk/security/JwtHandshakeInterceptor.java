@@ -48,6 +48,11 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         if (token != null && jwtTokenProvider.validateToken(token)) {
             String email = jwtTokenProvider.getEmailFromToken(token);
             User user = userRepository.findByEmail(email).orElse(null);
+            System.out.println("🔐 WebSocket Token: " + token);
+            System.out.println("📧 Email from Token: " + email);
+            System.out.println("👤 Found User: " + (user != null ? user.getNickname() : "null"));
+
+
             if (user != null) {
                 attributes.put("userId", user.getId()); // ✅ 세션에 userId 저장
                 return true;
